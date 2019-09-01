@@ -1,6 +1,6 @@
 package handler
 
-import CommitsRepository
+import repository.CommitsRepository
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -31,6 +31,17 @@ class UploadHandler(
       sendResponse(
         routingContext,
         "No apk version provided",
+        HttpResponseStatus.BAD_REQUEST
+      )
+      return
+    }
+
+    if (apkVersionString.toLongOrNull() == null) {
+      logger.error("apkVersionString must be a value, actual = $apkVersionString")
+
+      sendResponse(
+        routingContext,
+        "apkVersionString must be a value",
         HttpResponseStatus.BAD_REQUEST
       )
       return
@@ -75,8 +86,8 @@ class UploadHandler(
       return
     }
 
-    if (routingContext.fileUploads().size != 2) {
-      logger.error("FileUploads count does not equal to 1, count = ${routingContext.fileUploads().size}")
+    if (routingContext.fileUploads().size != EXPECTED_AMOUNT_OF_FILES) {
+      logger.error("FileUploads count does not equal to $EXPECTED_AMOUNT_OF_FILES, actual = ${routingContext.fileUploads().size}")
 
       sendResponse(
         routingContext,
@@ -124,7 +135,7 @@ class UploadHandler(
     latestCommitsFile: FileUpload
   ): Boolean {
     if (latestCommitsFile.size() > ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE) {
-      logger.error("File size is too big, size = ${latestCommitsFile.size()}")
+      logger.error("File size is too big, actual = ${latestCommitsFile.size()}")
 
       sendResponse(
         routingContext,
@@ -171,7 +182,7 @@ class UploadHandler(
     destFilePath: String
   ): Boolean {
     if (apkFile.size() > ServerVerticle.MAX_APK_FILE_SIZE) {
-      logger.error("File size is too big, size = ${apkFile.size()}")
+      logger.error("File size is too big, actual = ${apkFile.size()}")
 
       sendResponse(
         routingContext,
@@ -232,5 +243,6 @@ class UploadHandler(
   companion object {
     private const val UPLOADING_FILE_NAME = "apk"
     private const val LATEST_COMMITS_FILE_NAME = "latest_commits"
+    private const val EXPECTED_AMOUNT_OF_FILES = 2
   }
 }

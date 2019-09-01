@@ -1,3 +1,6 @@
+package repository
+
+import data.Commit
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.*
@@ -34,15 +37,26 @@ class CommitsRepository(
       commitsPerApkSource[apkVersionString] = newIds
     }
 
+    // TODO: error handling when DB introduced
     return Result.success(Unit)
   }
 
-  suspend fun getCommitsByApkVersion(apkVersionString: String): List<Commit> {
-    return mutex.withLock {
+  suspend fun getCommitsByApkVersion(apkVersionString: String): Result<List<Commit>> {
+    val commits = mutex.withLock {
       return@withLock commitsPerApkSource[apkVersionString]
         ?.mapNotNull { id -> latestCommitsSource[id] }
         ?: emptyList()
     }
+
+    // TODO: error handling when DB introduced
+    return Result.success(commits)
+  }
+
+  fun getLatestCommitHash(): Result<String?> {
+    val hash = latestCommitsSource.firstEntry()?.value?.hash
+
+    // TODO: error handling when DB introduced
+    return Result.success(hash)
   }
 
   private suspend fun parseLatestCommits(latestCommits: String): List<Commit> {
@@ -60,16 +74,5 @@ class CommitsRepository(
 
       return@mapNotNull Commit(matcher.group(1), matcher.group(2))
     }
-  }
-
-  data class Commit(
-    val hash: String,
-    val description: String
-  ) {
-
-    fun asString(): String {
-      return String.format("%s - %s", hash, description)
-    }
-
   }
 }

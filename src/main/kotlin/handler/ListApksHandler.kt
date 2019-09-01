@@ -1,6 +1,7 @@
 package handler
 
-import CommitsRepository
+import data.Commit
+import repository.CommitsRepository
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -59,46 +60,74 @@ class ListApksHandler(
       return
     }
 
-    /**
-     * <p><a title="
-    b2978284 - k1rakishou, 26 hours ago : (#172) Merge branch 'cheese-multi-feature' into (#172)-storage-access-framework
-    00eb3837 - Adamantcheese, 35 hours ago : Use enhanced for loops when possible Put some continues on the same line if short enough
-    "> download link </a></p>
-     * */
-
-    val commits = apkNames.associateWith { apkName ->
-      commitsRepository.getCommitsByApkVersion(apkName)
-    }
-
-    val html = buildString {
-      appendln("<!DOCTYPE html>")
-      appendHTML().html {
-        body {
-          for (apkName in apkNames) {
-            val commitsForThisApk = commits[apkName]
-              ?.take(LAST_COMMITS_COUNT)
-              ?.joinToString("\n", transform = { commit -> commit.asString() })
-
-            p {
-              a("http://127.0.0.1:8080/apk/${apkName}") {
-                if (commitsForThisApk != null) {
-                  title = commitsForThisApk
-                }
-
-                +apkName
-              }
-            }
-          }
-        }
-      }
-
-      appendln()
-    }
+    val filteredCommit = filterBadCommitResults(apkNames)
+    val html = buildIndexHtmlPage(apkNames, filteredCommit)
 
     routingContext
       .response()
       .setStatusCode(200)
       .end(html)
+  }
+
+  private suspend fun filterBadCommitResults(apkNames: List<String>): HashMap<String, List<Commit>> {
+    val commits = apkNames.associateWith { apkName ->
+      commitsRepository.getCommitsByApkVersion(apkName)
+    }
+
+    val filteredCommits = HashMap<String, List<Commit>>(commits.size / 2)
+
+    for ((apkName, getCommitResult) in commits) {
+      if (getCommitResult.isFailure) {
+        logger.error(
+          "Error while trying to get commits by apk version, " +
+            "apkName = $apkName", getCommitResult.exceptionOrNull()
+        )
+        continue
+      }
+
+      filteredCommits[apkName] = getCommitResult.getOrNull()!!
+    }
+
+    return filteredCommits
+  }
+
+  private fun buildIndexHtmlPage(
+    apkNames: List<String>,
+    commits: Map<String, List<Commit>>
+  ): String {
+    return buildString {
+      appendln("<!DOCTYPE html>")
+      appendHTML().html {
+        body { createBody(apkNames, commits) }
+      }
+
+      appendln()
+    }
+  }
+
+  private fun BODY.createBody(
+    apkNames: List<String>,
+    commits: Map<String, List<Commit>>
+  ) {
+    for (apkName in apkNames) {
+      val commitsForThisApk = commits[apkName]
+        ?.take(LAST_COMMITS_COUNT)
+        ?.joinToString("\n", transform = { commit -> commit.asString() })
+
+      if (commitsForThisApk == null) {
+        logger.warn("Couldn't find any commits for apk ${apkName}")
+      }
+
+      p {
+        a("http://127.0.0.1:8080/apk/${apkName}") {
+          if (commitsForThisApk != null) {
+            title = commitsForThisApk
+          }
+
+          +apkName
+        }
+      }
+    }
   }
 
   companion object {

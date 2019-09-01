@@ -12,6 +12,7 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import repository.CommitsRepository
 import java.io.File
 
 class ServerVerticle(
@@ -35,7 +36,7 @@ class ServerVerticle(
     uploadHandler = UploadHandler(vertx, apksDir, providedSecretKey, commitsRepository)
     getApkHandler = GetApkHandler(vertx, apksDir)
     listApksHandler = ListApksHandler(vertx, apksDir, commitsRepository)
-    getLatestUploadedCommitHashHandler = GetLatestUploadedCommitHashHandler(vertx, apksDir)
+    getLatestUploadedCommitHashHandler = GetLatestUploadedCommitHashHandler(vertx, apksDir, commitsRepository)
   }
 
   override suspend fun start() {
