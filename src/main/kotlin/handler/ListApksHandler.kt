@@ -2,6 +2,7 @@ package handler
 
 import data.Commit
 import fs.FileSystem
+import handler.result.ListApksHandlerResult
 import repository.CommitsRepository
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
@@ -16,10 +17,10 @@ class ListApksHandler(
   fileSystem: FileSystem,
   apksDir: File,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, fileSystem, apksDir) {
+) : AbstractHandler<ListApksHandlerResult>(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
 
-  override suspend fun handle(routingContext: RoutingContext) {
+  override suspend fun handle(routingContext: RoutingContext): ListApksHandlerResult {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
     val getUploadedApksResult = fileSystem.getUploadedApksAsync(apksDir.absolutePath)
@@ -31,7 +32,8 @@ class ListApksHandler(
         "Error while trying to collect uploaded apks",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
-      return
+
+      return ListApksHandlerResult.GenericExceptionResult(getUploadedApksResult.exceptionOrNull()!!)
     } else {
       getUploadedApksResult.getOrNull()!!
     }
@@ -44,7 +46,8 @@ class ListApksHandler(
         "No apks uploaded yet",
         HttpResponseStatus.OK
       )
-      return
+
+      return ListApksHandlerResult.NoApksUploaded
     }
 
     val apkNames = uploadedApks.mapNotNull { path ->
@@ -59,7 +62,8 @@ class ListApksHandler(
         "No apks uploaded yet",
         HttpResponseStatus.OK
       )
-      return
+
+      return ListApksHandlerResult.NoApksUploaded
     }
 
     val filteredCommit = filterBadCommitResults(apkNames)
@@ -69,6 +73,8 @@ class ListApksHandler(
       .response()
       .setStatusCode(200)
       .end(html)
+
+    return ListApksHandlerResult.Success
   }
 
   private suspend fun filterBadCommitResults(apkNames: List<String>): HashMap<String, List<Commit>> {

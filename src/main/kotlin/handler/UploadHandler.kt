@@ -1,18 +1,17 @@
 package handler
 
-import repository.CommitsRepository
+import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import fs.FileSystem
+import handler.result.UploadHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
+import repository.CommitsRepository
 import java.io.File
-import java.nio.charset.StandardCharsets
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
 class UploadHandler(
   vertx: Vertx,
@@ -20,10 +19,10 @@ class UploadHandler(
   apksDir: File,
   private val providedSecretKey: String,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, fileSystem, apksDir) {
+) : AbstractHandler<UploadHandlerResult>(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
 
-  override suspend fun handle(routingContext: RoutingContext) {
+  override suspend fun handle(routingContext: RoutingContext): UploadHandlerResult {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
 
     val apkVersionString = routingContext.request().getHeader(APK_VERSION_HEADER_NAME)
@@ -35,18 +34,20 @@ class UploadHandler(
         "No apk version provided",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.NoApkVersion
     }
 
     if (apkVersionString.toLongOrNull() == null) {
-      logger.error("apkVersionString must be a value, actual = $apkVersionString")
+      logger.error("apkVersionString must be numeric, actual = $apkVersionString")
 
       sendResponse(
         routingContext,
-        "apkVersionString must be a value",
+        "Apk version must be numeric",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.ApkVersionMustBeNumeric
     }
 
     val secretKey = routingContext.request().getHeader(SECRET_KEY_HEADER_NAME)
@@ -58,7 +59,8 @@ class UploadHandler(
         "Secret key is bad",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.SecretKeyIsBad
     }
 
     val destFilePath = File(apksDir, apkVersionString).absolutePath
@@ -72,7 +74,8 @@ class UploadHandler(
         "Error while trying to figure out whether the file exists",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
-      return
+
+      return UploadHandlerResult.GenericExceptionResult(fileExistsResult.exceptionOrNull()!!)
     } else {
       fileExistsResult.getOrNull()!!
     }
@@ -85,18 +88,23 @@ class UploadHandler(
         "File already exists",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.FileAlreadyExists
     }
 
     if (routingContext.fileUploads().size != EXPECTED_AMOUNT_OF_FILES) {
-      logger.error("FileUploads count does not equal to $EXPECTED_AMOUNT_OF_FILES, actual = ${routingContext.fileUploads().size}")
+      logger.error(
+        "FileUploads count does not equal to $EXPECTED_AMOUNT_OF_FILES, " +
+          "actual = ${routingContext.fileUploads().size}"
+      )
 
       sendResponse(
         routingContext,
         "Must upload only one file at a time",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.BadAmountOfRequestParts
     }
 
     val (apkFile, latestCommitsFile) = getFiles(routingContext.fileUploads())
@@ -111,17 +119,20 @@ class UploadHandler(
         message,
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return UploadHandlerResult.RequestPartIsNotPresent
     }
 
     // TODO: transaction
     run {
-      if (!storeLatestCommitsToDatabase(routingContext, apkVersionString, latestCommitsFile)) {
-        return
+      val storeCommitsResult = storeLatestCommitsToDatabase(routingContext, apkVersionString, latestCommitsFile)
+      if (storeCommitsResult != UploadHandlerResult.Success) {
+        return storeCommitsResult
       }
 
-      if (!saveApkFileToDisk(apkFile, routingContext, destFilePath)) {
-        return
+      val saveApkResult = saveApkFileToDisk(routingContext, apkFile, destFilePath)
+      if (saveApkResult != UploadHandlerResult.Success) {
+        return saveApkResult
       }
     }
 
@@ -129,13 +140,15 @@ class UploadHandler(
       .response()
       .setStatusCode(200)
       .end("Uploaded apk with version code $apkVersionString")
+
+    return UploadHandlerResult.Success
   }
 
   private suspend fun storeLatestCommitsToDatabase(
     routingContext: RoutingContext,
     apkVersionString: String,
     latestCommitsFile: FileUpload
-  ): Boolean {
+  ): UploadHandlerResult {
     if (latestCommitsFile.size() > ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE) {
       logger.error("File size is too big, actual = ${latestCommitsFile.size()}")
 
@@ -144,10 +157,11 @@ class UploadHandler(
         "Commits file is too big, size = ${latestCommitsFile.size()} max = ${ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE}",
         HttpResponseStatus.BAD_REQUEST
       )
-      return false
+
+      return UploadHandlerResult.CommitsFileIsTooBig
     }
 
-    val readResult = readJsonFileAsString(latestCommitsFile.uploadedFileName())
+    val readResult = fileSystem.readJsonFileAsString(latestCommitsFile.uploadedFileName())
     if (readResult.isFailure) {
       logger.error("Couldn't read latest commits file", readResult.exceptionOrNull()!!)
 
@@ -157,7 +171,9 @@ class UploadHandler(
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return false
+      return UploadHandlerResult.GenericExceptionResult(
+        readResult.exceptionOrNull()!!
+      )
     }
 
     val latestCommits = readResult.getOrNull()!!
@@ -172,17 +188,19 @@ class UploadHandler(
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return false
+      return UploadHandlerResult.GenericExceptionResult(
+        readResult.exceptionOrNull()!!
+      )
     }
 
-    return true
+    return UploadHandlerResult.Success
   }
 
   private suspend fun saveApkFileToDisk(
-    apkFile: FileUpload,
     routingContext: RoutingContext,
+    apkFile: FileUpload,
     destFilePath: String
-  ): Boolean {
+  ): UploadHandlerResult {
     if (apkFile.size() > ServerVerticle.MAX_APK_FILE_SIZE) {
       logger.error("File size is too big, actual = ${apkFile.size()}")
 
@@ -191,10 +209,11 @@ class UploadHandler(
         "Apk file is too big, size = ${apkFile.size()} max = ${ServerVerticle.MAX_APK_FILE_SIZE}",
         HttpResponseStatus.BAD_REQUEST
       )
-      return false
+
+      return UploadHandlerResult.ApkFileIsTooBig
     }
 
-    val copyResult = copySourceFileToDestFile(apkFile.uploadedFileName(), destFilePath)
+    val copyResult = fileSystem.copySourceFileToDestFile(apkFile.uploadedFileName(), destFilePath)
     if (copyResult.isFailure) {
       logger.error(
         "Couldn't copy source file (${apkFile.uploadedFileName()}) into the destination file (${destFilePath})",
@@ -206,10 +225,12 @@ class UploadHandler(
         "Error while trying to copy source file into the destination file",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
-      return false
+
+      return UploadHandlerResult.GenericExceptionResult(
+        copyResult.exceptionOrNull()!!)
     }
 
-    return true
+    return UploadHandlerResult.Success
   }
 
   private fun getFiles(fileUploads: Set<FileUpload>): Pair<FileUpload?, FileUpload?> {
@@ -217,29 +238,6 @@ class UploadHandler(
     val latestCommitsFile = fileUploads.firstOrNull { file -> file.name() == LATEST_COMMITS_FILE_NAME }
 
     return Pair(apkFile, latestCommitsFile)
-  }
-
-  private suspend fun readJsonFileAsString(jsonFilePath: String): Result<String> {
-    return suspendCoroutine { continuation ->
-      vertx.fileSystem().readFile(jsonFilePath) { asyncResult ->
-        if (asyncResult.succeeded()) {
-          val latestCommitsString = asyncResult.result().toString(StandardCharsets.UTF_8)
-          continuation.resume(Result.success(latestCommitsString))
-        }
-      }
-    }
-  }
-
-  private suspend fun copySourceFileToDestFile(sourcePath: String, destPath: String): Result<Unit> {
-    return suspendCoroutine { continuation ->
-      vertx.fileSystem().copy(sourcePath, destPath) { asyncResult ->
-        if (asyncResult.succeeded()) {
-          continuation.resume(Result.success(Unit))
-        } else {
-          continuation.resume(Result.failure(asyncResult.cause()))
-        }
-      }
-    }
   }
 
   companion object {

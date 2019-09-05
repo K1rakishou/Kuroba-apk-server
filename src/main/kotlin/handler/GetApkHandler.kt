@@ -1,6 +1,7 @@
 package handler
 
 import fs.FileSystem
+import handler.result.GetApkHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -11,10 +12,10 @@ class GetApkHandler(
   vertx: Vertx,
   fileSystem: FileSystem,
   apksDir: File
-) : AbstractHandler(vertx, fileSystem, apksDir) {
+) : AbstractHandler<GetApkHandlerResult>(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
 
-  override suspend fun handle(routingContext: RoutingContext) {
+  override suspend fun handle(routingContext: RoutingContext): GetApkHandlerResult {
     logger.info("New get apk request from ${routingContext.request().remoteAddress()}")
 
     val apkName = routingContext.pathParam(APK_NAME_PARAM)
@@ -26,7 +27,8 @@ class GetApkHandler(
         "Bad apk name",
         HttpResponseStatus.BAD_REQUEST
       )
-      return
+
+      return GetApkHandlerResult.BadApkName
     }
 
     val apkFilePath = String.format("%s${File.separator}%s", apksDir.absolutePath, apkName)
@@ -40,7 +42,8 @@ class GetApkHandler(
         "Error while trying to figure out whether a file exists",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
-      return
+
+      return GetApkHandlerResult.GenericExceptionResult(fileExistsResult.exceptionOrNull()!!)
     } else {
       fileExistsResult.getOrNull()!!
     }
@@ -53,26 +56,29 @@ class GetApkHandler(
         "File does not exist",
         HttpResponseStatus.NOT_FOUND
       )
-      return
+
+      return GetApkHandlerResult.FileDoesNotExist
     }
 
-    try {
-      fileSystem.writeFileAsync(routingContext, apkFilePath)
-    } catch (error: Exception) {
-      logger.error("Error while writing file back to the user " + error.message)
+    val writeFileResult = fileSystem.writeFileAsync(routingContext, apkFilePath)
+    if (writeFileResult.isFailure) {
+      logger.error("Error while writing file back to the user " + writeFileResult.exceptionOrNull()!!)
 
       sendResponse(
         routingContext,
         "Couldn't save file on the disk",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
-      return
+
+      return GetApkHandlerResult.GenericExceptionResult(writeFileResult.exceptionOrNull()!!)
     }
 
     routingContext
       .response()
       .setStatusCode(200)
       .end()
+
+    return GetApkHandlerResult.Success
   }
 
   companion object {

@@ -1,6 +1,7 @@
 package handler
 
 import fs.FileSystem
+import handler.result.GetLatestUploadedCommitHashHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -13,10 +14,10 @@ class GetLatestUploadedCommitHashHandler(
   fileSystem: FileSystem,
   apksDir: File,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, fileSystem, apksDir) {
+) : AbstractHandler<GetLatestUploadedCommitHashHandlerResult>(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(GetLatestUploadedCommitHashHandler::class.java)
 
-  override suspend fun handle(routingContext: RoutingContext) {
+  override suspend fun handle(routingContext: RoutingContext): GetLatestUploadedCommitHashHandlerResult {
     logger.info("New get latest uploaded commit hash request from ${routingContext.request().remoteAddress()}")
 
     val latestCommitHashResult = commitsRepository.getLatestCommitHash()
@@ -29,7 +30,7 @@ class GetLatestUploadedCommitHashHandler(
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return
+      return GetLatestUploadedCommitHashHandlerResult.GenericExceptionResult(latestCommitHashResult.exceptionOrNull()!!)
     }
 
     val latestCommitHash = latestCommitHashResult.getOrNull() ?: ""
@@ -38,5 +39,7 @@ class GetLatestUploadedCommitHashHandler(
       .response()
       .setStatusCode(200)
       .end(latestCommitHash)
+
+    return GetLatestUploadedCommitHashHandlerResult.Success
   }
 }
