@@ -74,7 +74,7 @@ class ServerVerticle(
 
     val router = Router.router(vertx)
 
-    router.post("/upload").handler(createBodyHandler().setDeleteUploadedFilesOnEnd(true))
+    router.post("/upload").handler(createBodyHandler())
     router.post("/upload").handler { routingContext ->
       handle(routingContext) {
         routingContext.response().setChunked(true);
