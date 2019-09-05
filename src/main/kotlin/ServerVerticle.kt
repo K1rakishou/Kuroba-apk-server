@@ -1,3 +1,4 @@
+import fs.FileSystem
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
 import handler.ListApksHandler
@@ -22,6 +23,7 @@ class ServerVerticle(
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
   private lateinit var commitsRepository: CommitsRepository
+  private lateinit var fileSystem: FileSystem
 
   private lateinit var uploadHandler: UploadHandler
   private lateinit var getApkHandler: GetApkHandler
@@ -32,11 +34,31 @@ class ServerVerticle(
     super.init(vertx, context)
 
     commitsRepository = CommitsRepository()
+    fileSystem = FileSystem(vertx)
 
-    uploadHandler = UploadHandler(vertx, apksDir, providedSecretKey, commitsRepository)
-    getApkHandler = GetApkHandler(vertx, apksDir)
-    listApksHandler = ListApksHandler(vertx, apksDir, commitsRepository)
-    getLatestUploadedCommitHashHandler = GetLatestUploadedCommitHashHandler(vertx, apksDir, commitsRepository)
+    uploadHandler = UploadHandler(
+      vertx,
+      fileSystem,
+      apksDir,
+      providedSecretKey,
+      commitsRepository)
+
+    getApkHandler = GetApkHandler(
+      vertx,
+      fileSystem,
+      apksDir)
+
+    listApksHandler = ListApksHandler(
+      vertx,
+      fileSystem,
+      apksDir,
+      commitsRepository)
+
+    getLatestUploadedCommitHashHandler = GetLatestUploadedCommitHashHandler(
+      vertx,
+      fileSystem,
+      apksDir,
+      commitsRepository)
   }
 
   override suspend fun start() {

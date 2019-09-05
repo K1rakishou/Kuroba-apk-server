@@ -3,6 +3,7 @@ package handler
 import repository.CommitsRepository
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import fs.FileSystem
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -15,10 +16,11 @@ import kotlin.coroutines.suspendCoroutine
 
 class UploadHandler(
   vertx: Vertx,
+  fileSystem: FileSystem,
   apksDir: File,
   private val providedSecretKey: String,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, apksDir) {
+) : AbstractHandler(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext) {
@@ -61,7 +63,7 @@ class UploadHandler(
 
     val destFilePath = File(apksDir, apkVersionString).absolutePath
 
-    val fileExistsResult = fileExistsAsync(destFilePath)
+    val fileExistsResult = fileSystem.fileExistsAsync(destFilePath)
     val exists = if (fileExistsResult.isFailure) {
       logger.error("fileExistsAsync() returned exception", fileExistsResult.exceptionOrNull()!!)
 

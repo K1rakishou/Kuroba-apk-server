@@ -1,5 +1,6 @@
 package handler
 
+import fs.FileSystem
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -9,9 +10,10 @@ import java.io.File
 
 class GetLatestUploadedCommitHashHandler(
   vertx: Vertx,
+  fileSystem: FileSystem,
   apksDir: File,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, apksDir) {
+) : AbstractHandler(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(GetLatestUploadedCommitHashHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext) {

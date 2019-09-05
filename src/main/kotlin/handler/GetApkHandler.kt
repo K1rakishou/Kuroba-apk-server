@@ -1,5 +1,6 @@
 package handler
 
+import fs.FileSystem
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
@@ -8,8 +9,9 @@ import java.io.File
 
 class GetApkHandler(
   vertx: Vertx,
+  fileSystem: FileSystem,
   apksDir: File
-) : AbstractHandler(vertx, apksDir) {
+) : AbstractHandler(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext) {
@@ -29,7 +31,7 @@ class GetApkHandler(
 
     val apkFilePath = String.format("%s${File.separator}%s", apksDir.absolutePath, apkName)
 
-    val fileExistsResult = fileExistsAsync(apkFilePath)
+    val fileExistsResult = fileSystem.fileExistsAsync(apkFilePath)
     val exists = if (fileExistsResult.isFailure) {
       logger.error("fileExistsAsync() returned exception", fileExistsResult.exceptionOrNull()!!)
 
@@ -55,7 +57,7 @@ class GetApkHandler(
     }
 
     try {
-      writeFileAsync(routingContext, apkFilePath)
+      fileSystem.writeFileAsync(routingContext, apkFilePath)
     } catch (error: Exception) {
       logger.error("Error while writing file back to the user " + error.message)
 

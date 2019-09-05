@@ -1,6 +1,7 @@
 package handler
 
 import data.Commit
+import fs.FileSystem
 import repository.CommitsRepository
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
@@ -12,15 +13,16 @@ import java.io.File
 
 class ListApksHandler(
   vertx: Vertx,
+  fileSystem: FileSystem,
   apksDir: File,
   private val commitsRepository: CommitsRepository
-) : AbstractHandler(vertx, apksDir) {
+) : AbstractHandler(vertx, fileSystem, apksDir) {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext) {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
-    val getUploadedApksResult = getUploadedApksAsync(apksDir.absolutePath)
+    val getUploadedApksResult = fileSystem.getUploadedApksAsync(apksDir.absolutePath)
     val uploadedApks = if (getUploadedApksResult.isFailure) {
       logger.error("getUploadedApksAsync() returned exception ${getUploadedApksResult.exceptionOrNull()!!}")
 
