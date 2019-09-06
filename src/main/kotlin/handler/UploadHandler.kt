@@ -4,6 +4,7 @@ import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import di.MainModule
+import extensions.toHex
 import handler.result.UploadHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
@@ -12,12 +13,14 @@ import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
 import org.koin.core.qualifier.named
 import repository.CommitsRepository
+import service.FileHeaderChecker
 import java.io.File
 
 class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
   private val providedSecretKey by inject<String>(named(MainModule.SECRET_KEY))
   private val commitsRepository by inject<CommitsRepository>()
+  private val fileHeaderChecker by inject<FileHeaderChecker>()
 
   override suspend fun handle(routingContext: RoutingContext): UploadHandlerResult {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
@@ -118,6 +121,35 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
       )
 
       return UploadHandlerResult.RequestPartIsNotPresent
+    }
+
+    val readBytesResult = fileSystem.readBytes(apkFile.uploadedFileName(), 0, 2)
+    if (readBytesResult.isFailure) {
+      val message = "Couldn't read uploaded apk's header"
+      logger.error(message, readBytesResult.exceptionOrNull()!!)
+
+      sendResponse(
+        routingContext,
+        message,
+        HttpResponseStatus.INTERNAL_SERVER_ERROR
+      )
+
+      return UploadHandlerResult.CouldNotReadApkFileHeader
+    }
+
+    val header = readBytesResult.getOrNull()!!
+    val valid = fileHeaderChecker.isValidApkFileHeader(header)
+    if (!valid) {
+      val message = "Uploaded apk file does not have apk file header: ${header.toHex()}"
+      logger.error(message)
+
+      sendResponse(
+        routingContext,
+        message,
+        HttpResponseStatus.BAD_REQUEST
+      )
+
+      return UploadHandlerResult.NotAnApkFile
     }
 
     // TODO: transaction

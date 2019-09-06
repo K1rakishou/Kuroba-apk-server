@@ -80,7 +80,7 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
         routingContext
           .response()
           .setStatusCode(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
-          .end("Internal server error")
+          .end("Unknown server error")
       }
     }
   }

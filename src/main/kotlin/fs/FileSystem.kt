@@ -72,4 +72,24 @@ class FileSystem : KoinComponent {
       }
     }
   }
+
+  suspend fun readBytes(filePath: String, offset: Int, size: Int): Result<ByteArray> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().readFile(filePath) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          val array = ByteArray(size)
+
+          try {
+            asyncResult.result().getBytes(offset, offset + size, array)
+            continuation.resume(Result.success(array))
+          } catch (error: IndexOutOfBoundsException) {
+            continuation.resume(Result.failure(error))
+          }
+
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
 }

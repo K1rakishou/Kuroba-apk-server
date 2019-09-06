@@ -8,6 +8,8 @@ sealed class UploadHandlerResult : HandlerResult {
   object FileAlreadyExists : UploadHandlerResult()
   object BadAmountOfRequestParts : UploadHandlerResult()
   object RequestPartIsNotPresent : UploadHandlerResult()
+  object CouldNotReadApkFileHeader : UploadHandlerResult()
+  object NotAnApkFile : UploadHandlerResult()
   object CommitsFileIsTooBig : UploadHandlerResult()
   object ApkFileIsTooBig : UploadHandlerResult()
 

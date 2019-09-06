@@ -10,6 +10,7 @@ import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import repository.CommitsRepository
+import service.FileHeaderChecker
 import java.io.File
 
 class MainModule(
@@ -26,6 +27,9 @@ class MainModule(
 
       single { CommitsRepository() }
       single { FileSystem() }
+
+      // Services
+      single { FileHeaderChecker() }
 
       // Handlers
       single { UploadHandler() }
