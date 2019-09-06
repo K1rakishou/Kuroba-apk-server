@@ -19,6 +19,8 @@ dependencies {
     implementation "io.vertx:vertx-lang-kotlin-coroutines:3.8.1"
 
     implementation 'org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.12'
+
+    implementation "org.koin:koin-core:2.0.1"
 }
 
 compileKotlin {

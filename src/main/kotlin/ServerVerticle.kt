@@ -1,11 +1,9 @@
-import fs.FileSystem
+import di.MainModule
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
 import handler.ListApksHandler
 import handler.UploadHandler
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.Context
-import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -13,53 +11,20 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import repository.CommitsRepository
+import org.koin.core.KoinComponent
+import org.koin.core.inject
+import org.koin.core.qualifier.named
 import java.io.File
 
-class ServerVerticle(
-  private val providedSecretKey: String,
-  private val apksDir: File
-) : CoroutineVerticle() {
+class ServerVerticle : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
-  private lateinit var commitsRepository: CommitsRepository
-  private lateinit var fileSystem: FileSystem
-
-  private lateinit var uploadHandler: UploadHandler
-  private lateinit var getApkHandler: GetApkHandler
-  private lateinit var listApksHandler: ListApksHandler
-  private lateinit var getLatestUploadedCommitHashHandler: GetLatestUploadedCommitHashHandler
-
-  override fun init(vertx: Vertx, context: Context) {
-    super.init(vertx, context)
-
-    commitsRepository = CommitsRepository()
-    fileSystem = FileSystem(vertx)
-
-    uploadHandler = UploadHandler(
-      vertx,
-      fileSystem,
-      apksDir,
-      providedSecretKey,
-      commitsRepository)
-
-    getApkHandler = GetApkHandler(
-      vertx,
-      fileSystem,
-      apksDir)
-
-    listApksHandler = ListApksHandler(
-      vertx,
-      fileSystem,
-      apksDir,
-      commitsRepository)
-
-    getLatestUploadedCommitHashHandler = GetLatestUploadedCommitHashHandler(
-      vertx,
-      fileSystem,
-      apksDir,
-      commitsRepository)
-  }
+  private val apksDir by inject<File>(named(MainModule.APKS_DIR))
+  private val secretKey by inject<String>(named(MainModule.SECRET_KEY))
+  private val uploadHandler by inject<UploadHandler>()
+  private val getApkHandler by inject<GetApkHandler>()
+  private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
+  private val listApksHandler by inject<ListApksHandler>()
 
   override suspend fun start() {
     super.start()
@@ -68,7 +33,7 @@ class ServerVerticle(
       throw RuntimeException("apksDir does not exist! dir = ${apksDir.absolutePath}")
     }
 
-    if (providedSecretKey.length != SECRET_KEY_LENGTH) {
+    if (secretKey.length != SECRET_KEY_LENGTH) {
       throw RuntimeException("Secret key's length != $SECRET_KEY_LENGTH")
     }
 
@@ -94,7 +59,7 @@ class ServerVerticle(
     vertx
       .createHttpServer()
       .requestHandler(router)
-      .exceptionHandler { logger.fatal("Unhandled exception", it) }
+      .exceptionHandler { error -> logger.fatal("Unhandled exception", error) }
       .listen(8080)
   }
 
@@ -105,10 +70,10 @@ class ServerVerticle(
       .setBodyLimit(MAX_APK_FILE_SIZE)
   }
 
-  private fun handle(routingContext: RoutingContext, func: suspend (RoutingContext) -> Unit) {
+  private fun handle(routingContext: RoutingContext, func: suspend () -> Unit) {
     launch(Dispatchers.IO) {
       try {
-        func(routingContext)
+        func()
       } catch (error: Exception) {
         logger.fatal("Unhandled handler exception", error)
 

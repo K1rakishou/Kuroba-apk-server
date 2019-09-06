@@ -1,4 +1,6 @@
+import di.MainModule
 import io.vertx.core.Vertx
+import org.koin.core.context.startKoin
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -7,9 +9,13 @@ fun main(args: Array<String>) {
     return
   }
 
-  val serverVerticle = ServerVerticle(args[0], File(args[1]))
+  val vertx = Vertx.vertx()
 
-  Vertx.vertx().deployVerticle(serverVerticle) { ar ->
+  val koinApplication = startKoin {
+    modules(MainModule(vertx, File(args[1]), args[0]).createMainModule())
+  }
+
+  vertx.deployVerticle(ServerVerticle()) { ar ->
     if (ar.succeeded()) {
       println("Server started")
     } else {

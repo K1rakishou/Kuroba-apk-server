@@ -2,13 +2,14 @@ package fs
 
 import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
+import org.koin.core.KoinComponent
+import org.koin.core.inject
 import java.nio.charset.StandardCharsets
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class FileSystem(
-  private val vertx: Vertx
-) {
+class FileSystem : KoinComponent {
+  private val vertx by inject<Vertx>()
 
   suspend fun getUploadedApksAsync(path: String): Result<List<String>> {
     return suspendCoroutine { continuation ->

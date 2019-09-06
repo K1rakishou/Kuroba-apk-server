@@ -3,24 +3,21 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
-import fs.FileSystem
+import di.MainModule
 import handler.result.UploadHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
+import org.koin.core.inject
+import org.koin.core.qualifier.named
 import repository.CommitsRepository
 import java.io.File
 
-class UploadHandler(
-  vertx: Vertx,
-  fileSystem: FileSystem,
-  apksDir: File,
-  private val providedSecretKey: String,
-  private val commitsRepository: CommitsRepository
-) : AbstractHandler<UploadHandlerResult>(vertx, fileSystem, apksDir) {
+class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
+  private val providedSecretKey by inject<String>(named(MainModule.SECRET_KEY))
+  private val commitsRepository by inject<CommitsRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): UploadHandlerResult {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")

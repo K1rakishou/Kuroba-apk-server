@@ -1,24 +1,19 @@
 package handler
 
 import data.Commit
-import fs.FileSystem
 import handler.result.ListApksHandlerResult
-import repository.CommitsRepository
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
+import org.koin.core.inject
+import repository.CommitsRepository
 import java.io.File
 
-class ListApksHandler(
-  vertx: Vertx,
-  fileSystem: FileSystem,
-  apksDir: File,
-  private val commitsRepository: CommitsRepository
-) : AbstractHandler<ListApksHandlerResult>(vertx, fileSystem, apksDir) {
+class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
+  private val commitsRepository by inject<CommitsRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): ListApksHandlerResult {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")

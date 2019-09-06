@@ -1,18 +1,12 @@
 package handler
 
-import fs.FileSystem
 import handler.result.GetApkHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import java.io.File
 
-class GetApkHandler(
-  vertx: Vertx,
-  fileSystem: FileSystem,
-  apksDir: File
-) : AbstractHandler<GetApkHandlerResult>(vertx, fileSystem, apksDir) {
+class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext): GetApkHandlerResult {

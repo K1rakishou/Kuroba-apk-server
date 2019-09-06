@@ -1,21 +1,15 @@
 package handler
 
-import fs.FileSystem
 import handler.result.GetLatestUploadedCommitHashHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
+import org.koin.core.inject
 import repository.CommitsRepository
-import java.io.File
 
-class GetLatestUploadedCommitHashHandler(
-  vertx: Vertx,
-  fileSystem: FileSystem,
-  apksDir: File,
-  private val commitsRepository: CommitsRepository
-) : AbstractHandler<GetLatestUploadedCommitHashHandlerResult>(vertx, fileSystem, apksDir) {
+class GetLatestUploadedCommitHashHandler : AbstractHandler<GetLatestUploadedCommitHashHandlerResult>() {
   private val logger = LoggerFactory.getLogger(GetLatestUploadedCommitHashHandler::class.java)
+  private val commitsRepository by inject<CommitsRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): GetLatestUploadedCommitHashHandlerResult {
     logger.info("New get latest uploaded commit hash request from ${routingContext.request().remoteAddress()}")
