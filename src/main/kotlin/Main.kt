@@ -10,9 +10,16 @@ fun main(args: Array<String>) {
   }
 
   val vertx = Vertx.vertx()
+  val secretKey = args[0]
+  val apksDirPath = args[1]
 
-  val koinApplication = startKoin {
-    modules(MainModule(vertx, File(args[1]), args[0]).createMainModule())
+  if (secretKey.length < 128) {
+    println("Bad secret key length, must be at least 128 characters")
+    return
+  }
+
+  startKoin {
+    modules(MainModule(vertx, File(apksDirPath), secretKey).createMainModule())
   }
 
   vertx.deployVerticle(ServerVerticle()) { ar ->

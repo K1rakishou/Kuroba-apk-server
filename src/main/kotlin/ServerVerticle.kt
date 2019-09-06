@@ -20,7 +20,6 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
   private val apksDir by inject<File>(named(MainModule.APKS_DIR))
-  private val secretKey by inject<String>(named(MainModule.SECRET_KEY))
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()
   private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
@@ -31,10 +30,6 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
 
     if (!apksDir.exists()) {
       throw RuntimeException("apksDir does not exist! dir = ${apksDir.absolutePath}")
-    }
-
-    if (secretKey.length != SECRET_KEY_LENGTH) {
-      throw RuntimeException("Secret key's length != $SECRET_KEY_LENGTH")
     }
 
     val router = Router.router(vertx)
@@ -88,7 +83,6 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
   companion object {
     const val SECRET_KEY_HEADER_NAME = "SECRET_KEY"
     const val APK_VERSION_HEADER_NAME = "APK_VERSION"
-    const val SECRET_KEY_LENGTH = 128
     const val MAX_APK_FILE_SIZE = 1024L * 1024L * 32L // 32 MB
     const val MAX_LATEST_COMMITS_FILE_SIZE = 1024L * 512L // 512 KB
   }

@@ -18,7 +18,7 @@ import java.io.File
 
 class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
-  private val providedSecretKey by inject<String>(named(MainModule.SECRET_KEY))
+  private val secretKey by inject<String>(named(MainModule.SECRET_KEY))
   private val commitsRepository by inject<CommitsRepository>()
   private val fileHeaderChecker by inject<FileHeaderChecker>()
 
@@ -51,7 +51,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     }
 
     val secretKey = routingContext.request().getHeader(SECRET_KEY_HEADER_NAME)
-    if (secretKey != providedSecretKey) {
+    if (secretKey != this.secretKey) {
       logger.error("secretKey != providedSecretKey")
 
       sendResponse(
