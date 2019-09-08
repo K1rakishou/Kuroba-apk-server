@@ -13,11 +13,6 @@ fun main(args: Array<String>) {
   val secretKey = args[0]
   val apksDirPath = args[1]
 
-  if (secretKey.length < 128) {
-    println("Bad secret key length, must be at least 128 characters")
-    return
-  }
-
   startKoin {
     modules(MainModule(vertx, File(apksDirPath), secretKey).createMainModule())
   }
