@@ -6,6 +6,12 @@ class FileHeaderChecker {
   )
 
   fun isValidApkFileHeader(header: ByteArray): Boolean {
-    return allowedApkHeaders.any { apkHeader -> apkHeader.contentEquals(header)}
+    return allowedApkHeaders.any { apkHeader ->
+      if (apkHeader.size != header.size) {
+        return@any false
+      }
+
+      return@any apkHeader.contentEquals(header)
+    }
   }
 }

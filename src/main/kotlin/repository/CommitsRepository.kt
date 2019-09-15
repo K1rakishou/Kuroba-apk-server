@@ -1,26 +1,32 @@
 package repository
 
 import data.Commit
+import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import parser.CommitParser
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
-import java.util.regex.Pattern
 import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 class CommitsRepository(
-  private val latestCommitsSource: TreeMap<Long, Commit> = TreeMap(naturalOrder<Long>()),
-  private val commitsPerApkSource: HashMap<String, List<Long>> = hashMapOf()
+  private val commitParser: CommitParser
 ) {
+  private val logger = LoggerFactory.getLogger(CommitsRepository::class.java)
+
+  private val latestCommitsSource: TreeMap<Long, Commit> = TreeMap(naturalOrder<Long>())
+  private val commitsPerApkSource: HashMap<String, List<Long>> = hashMapOf()
   private val mutex = Mutex()
   private val idGen = AtomicLong(0)
-  private val regex = Pattern.compile("(\\b[0-9a-f]{5,40}\\b) - (.*)")
 
   suspend fun storeNewCommits(apkVersionString: String, latestCommits: String): Result<Unit> {
-    val parsedData = parseLatestCommits(latestCommits)
+    if (latestCommits.isEmpty()) {
+      return Result.failure(IllegalArgumentException("latestCommits is empty"))
+    }
+
+    val parsedData = commitParser.parseLatestCommits(latestCommits)
     if (parsedData.isEmpty()) {
-      // TODO: Log that nothing was parsed?
+      logger.info("Couldn't parse any commits, latestCommits = $latestCommits")
       return Result.success(Unit)
     }
 
@@ -57,22 +63,5 @@ class CommitsRepository(
 
     // TODO: error handling when DB introduced
     return Result.success(hash)
-  }
-
-  private suspend fun parseLatestCommits(latestCommits: String): List<Commit> {
-    val split = latestCommits.split('\n')
-    if (split.isEmpty()) {
-      return emptyList()
-    }
-
-    return split.mapNotNull { sp ->
-      val matcher = regex.matcher(sp)
-
-      if (!matcher.find()) {
-        return@mapNotNull null
-      }
-
-      return@mapNotNull Commit(matcher.group(1), matcher.group(2))
-    }
   }
 }
