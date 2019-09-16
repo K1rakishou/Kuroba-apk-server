@@ -1,5 +1,9 @@
+import db.table.CommitTable
 import di.MainModule
 import io.vertx.core.Vertx
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
 import java.io.File
 
@@ -15,9 +19,10 @@ fun main(args: Array<String>) {
   val apksDirPath = args[2]
 
   println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath")
+  val database = initDatabase()
 
   startKoin {
-    modules(MainModule(vertx, baseUrl, File(apksDirPath), secretKey).createMainModule())
+    modules(MainModule(vertx, database, baseUrl, File(apksDirPath), secretKey).createMainModule())
   }
 
   vertx.deployVerticle(ServerVerticle()) { ar ->
@@ -27,5 +32,19 @@ fun main(args: Array<String>) {
       println("Could not start server")
       ar.cause().printStackTrace()
     }
+  }
+}
+
+private fun initDatabase(): Database {
+  return run {
+    println("Initializing DB")
+    val database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+
+    transaction(database) {
+      SchemaUtils.create(CommitTable)
+    }
+
+    println("Done")
+    return@run database
   }
 }

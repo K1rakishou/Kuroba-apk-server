@@ -29,30 +29,32 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
       throw RuntimeException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
     }
 
-    val router = Router.router(vertx)
-
-    router.post("/upload").handler(createBodyHandler())
-    router.post("/upload").handler { routingContext ->
-      handle(routingContext) {
-        routingContext.response().setChunked(true);
-        uploadHandler.handle(routingContext)
-      }
-    }
-    router.get("/apk/:${GetApkHandler.APK_NAME_PARAM}").handler { routingContext ->
-      handle(routingContext) { getApkHandler.handle(routingContext) }
-    }
-    router.get("/latest_commit_hash").handler { routingContext ->
-      handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
-    }
-    router.get("/").handler { routingContext ->
-      handle(routingContext) { listApksHandler.handle(routingContext) }
-    }
-
     vertx
       .createHttpServer()
-      .requestHandler(router)
+      .requestHandler(initRouter())
       .exceptionHandler { error -> logger.fatal("Unhandled exception", error) }
       .listen(8080)
+  }
+
+  private fun initRouter(): Router {
+    return Router.router(vertx).apply {
+      post("/upload").handler(createBodyHandler())
+      post("/upload").handler { routingContext ->
+        handle(routingContext) {
+          routingContext.response().setChunked(true)
+          uploadHandler.handle(routingContext)
+        }
+      }
+      get("/apk/:${GetApkHandler.APK_NAME_PARAM}").handler { routingContext ->
+        handle(routingContext) { getApkHandler.handle(routingContext) }
+      }
+      get("/latest_commit_hash").handler { routingContext ->
+        handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
+      }
+      get("/").handler { routingContext ->
+        handle(routingContext) { listApksHandler.handle(routingContext) }
+      }
+    }
   }
 
   private fun createBodyHandler(): BodyHandler {

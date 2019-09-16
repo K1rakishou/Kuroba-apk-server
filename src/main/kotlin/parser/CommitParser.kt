@@ -1,21 +1,22 @@
 package parser
 
+import data.ApkVersion
 import data.Commit
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeParseException
+import data.CommitHash
+import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormat
 import java.util.regex.Pattern
 
 class CommitParser {
   private val regex = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
 
-  fun parseCommits(commitsString: String): List<Commit> {
+  fun parseCommits(apkVersion: ApkVersion, commitsString: String): List<Commit> {
     val split = commitsString.split('\n')
     if (split.isEmpty()) {
       return emptyList()
     }
 
-    return split.mapNotNull { sp ->
+    val parsedCommits = split.mapNotNull { sp ->
       val matcher = regex.matcher(sp)
       if (!matcher.find()) {
         return@mapNotNull null
@@ -30,19 +31,29 @@ class CommitParser {
       }
 
       val parsedTime = try {
-        LocalDateTime.parse(timeString, COMMIT_DATE_TIME_FORMAT)
-      } catch (ignored: DateTimeParseException) {
+        DateTime.parse(timeString, COMMIT_DATE_TIME_FORMAT)
+      } catch (ignored: Throwable) {
         return@mapNotNull null
       }
 
       return@mapNotNull Commit(
-        hash,
+        apkVersion,
+        CommitHash(hash),
         parsedTime,
         description)
+    }
+
+    // First element should contain the latest commit
+    return parsedCommits.sortedByDescending { commit -> commit.committedAt }
+  }
+
+  fun commitsToString(parsedCommits: List<Commit>): String {
+    return parsedCommits.joinToString(separator = "\n") { commit ->
+      commit.asString()
     }
   }
 
   companion object {
-    val COMMIT_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    val COMMIT_DATE_TIME_FORMAT = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
   }
 }

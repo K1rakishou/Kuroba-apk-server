@@ -19,6 +19,8 @@ dependencies {
     implementation 'io.vertx:vertx-lang-kotlin-coroutines:3.8.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.12'
     implementation 'org.koin:koin-core:2.0.1'
+    implementation 'org.jetbrains.exposed:exposed:0.17.3'
+    implementation 'com.h2database:h2:1.4.199'
 
     testImplementation 'io.vertx:vertx-unit:3.8.1'
     testImplementation 'io.vertx:vertx-junit5:3.8.1'

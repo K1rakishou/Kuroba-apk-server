@@ -1,67 +1,136 @@
 package repository
 
+import data.ApkFileName
+import data.ApkVersion
 import data.Commit
+import data.CommitHash
+import db.table.CommitTable
 import io.vertx.core.logging.LoggerFactory
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import org.jetbrains.exposed.sql.*
+import org.koin.core.inject
 import parser.CommitParser
-import java.util.*
-import java.util.concurrent.atomic.AtomicLong
-import kotlin.collections.ArrayList
 
-class CommitsRepository(
-  private val commitParser: CommitParser
-) {
+class CommitsRepository : BaseRepository() {
   private val logger = LoggerFactory.getLogger(CommitsRepository::class.java)
 
-  private val latestCommitsSource: TreeMap<Long, Commit> = TreeMap(naturalOrder<Long>())
-  private val commitsPerApkSource: HashMap<String, List<Long>> = hashMapOf()
-  private val mutex = Mutex()
-  private val idGen = AtomicLong(0)
+  private val commitParser by inject<CommitParser>()
 
-  suspend fun storeNewCommits(apkVersionString: String, latestCommits: String): Result<Unit> {
+  suspend fun init() {
+    // TODO: restore everything
+  }
+
+  suspend fun insertNewCommits(apkVersion: ApkVersion, latestCommits: String): Result<List<Commit>> {
     if (latestCommits.isEmpty()) {
       return Result.failure(IllegalArgumentException("latestCommits is empty"))
     }
 
-    val parsedData = commitParser.parseCommits(latestCommits)
-    if (parsedData.isEmpty()) {
+    val parsedCommits = commitParser.parseCommits(apkVersion, latestCommits)
+    if (parsedCommits.isEmpty()) {
+      // We must have at least one commit parsed, otherwise we fail the build
       logger.info("Couldn't parse any commits, latestCommits = $latestCommits")
-      return Result.success(Unit)
+      return Result.failure(CommitsParseException())
     }
 
-    val newIds = ArrayList<Long>(parsedData.size)
+    if (!validateCommits(parsedCommits)) {
+      return Result.failure(CommitValidationException())
+    }
 
-    mutex.withLock {
-      for (parsed in parsedData) {
-        val id = idGen.getAndIncrement()
-        latestCommitsSource[id] = parsed
+    val insertResult = insertCommits(parsedCommits)
+    if (insertResult.isFailure) {
+      logger.error("Couldn't insert new commits", insertResult.exceptionOrNull()!!)
+      return Result.failure(insertResult.exceptionOrNull()!!)
+    }
 
-        newIds.add(id)
+    return Result.success(parsedCommits)
+  }
+
+  private fun validateCommits(parsedCommits: List<Commit>): Boolean {
+    for (commit in parsedCommits) {
+      if (!commit.validate()) {
+        logger.error("Commit ${commit} is not a valid commit")
+        return false
+      }
+    }
+
+    return true
+  }
+
+  suspend fun getCommitsByApkVersion(apkFileName: ApkFileName): Result<List<Commit>> {
+    return dbRead {
+      CommitTable.select {
+        CommitTable.groupUuid.eq(apkFileName.getUuid())
+      }
+        .orderBy(CommitTable.committedAt, SortOrder.DESC)
+        .map { resultRow -> Commit.fromResultRow(resultRow) }
+    }
+  }
+
+  suspend fun getLatestCommitHash(): Result<CommitHash?> {
+    return dbRead {
+      // TODO: this may be bad, figure out how to do this more effectively
+      CommitTable.selectAll()
+        .orderBy(CommitTable.committedAt, SortOrder.DESC)
+        .limit(1)
+        .firstOrNull()
+        ?.let { resultRow -> resultRow[CommitTable.hash] }
+        ?.let { commitHash -> CommitHash(commitHash) }
+    }
+  }
+
+  private suspend fun insertCommits(commits: List<Commit>): Result<Unit> {
+    require(commits.isNotEmpty())
+
+    return dbWrite {
+      val apkVersions = commits.map { commit -> commit.apkVersion.version }
+      val hashes = commits.map { commit -> commit.commitHash.hash }
+      val groupUuid = commits.first().apkUuid
+
+      val alreadyInserted = CommitTable.select {
+        CommitTable.apkVersion.inList(apkVersions) and
+          CommitTable.hash.inList(hashes)
+      }
+        .map { resultRow -> Commit.fromResultRow(resultRow) }
+        .toSet()
+
+      val filtered = commits.filter { commit ->
+        !alreadyInserted.contains(commit)
       }
 
-      commitsPerApkSource[apkVersionString] = newIds
+      if (filtered.isEmpty()) {
+        throw NoNewCommitsLeftAfterFiltering()
+      }
+
+      CommitTable.batchInsert(filtered) { commit ->
+        this[CommitTable.uuid] = commit.apkUuid.uuid
+        this[CommitTable.groupUuid] = groupUuid.uuid
+        this[CommitTable.hash] = commit.commitHash.hash
+        this[CommitTable.apkVersion] = commit.apkVersion.version
+        this[CommitTable.committedAt] = commit.committedAt
+        this[CommitTable.description] = commit.description
+      }
+
+      return@dbWrite
     }
-
-    // TODO: error handling when DB introduced
-    return Result.success(Unit)
   }
 
-  suspend fun getCommitsByApkVersion(apkVersionString: String): Result<List<Commit>> {
-    val commits = mutex.withLock {
-      return@withLock commitsPerApkSource[apkVersionString]
-        ?.mapNotNull { id -> latestCommitsSource[id] }
-        ?: emptyList()
+  suspend fun removeCommits(commits: List<Commit>): Result<Unit> {
+    require(commits.isNotEmpty())
+
+    return dbWrite {
+      val apkVersions = commits.map { commit -> commit.apkVersion.version }
+      val hashes = commits.map { commit -> commit.commitHash.hash }
+
+      CommitTable.deleteWhere {
+        CommitTable.apkVersion.inList(apkVersions) and
+          CommitTable.hash.inList(hashes)
+      }
+
+      return@dbWrite
     }
-
-    // TODO: error handling when DB introduced
-    return Result.success(commits)
   }
 
-  fun getLatestCommitHash(): Result<String?> {
-    val hash = latestCommitsSource.firstEntry()?.value?.hash
-
-    // TODO: error handling when DB introduced
-    return Result.success(hash)
-  }
 }
+
+class CommitsParseException : Exception("Couldn't parse commits, resulted in empty parsed data")
+class CommitValidationException : Exception("One of the parsed commits is not valid")
+class NoNewCommitsLeftAfterFiltering : Exception("No new commits left after filtering")

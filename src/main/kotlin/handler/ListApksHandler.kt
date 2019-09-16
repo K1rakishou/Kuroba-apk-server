@@ -1,5 +1,6 @@
 package handler
 
+import data.ApkFileName
 import data.Commit
 import handler.result.ListApksHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -46,7 +47,12 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
     }
 
     val apkNames = uploadedApks.mapNotNull { path ->
-      path.split(File.separator).lastOrNull()
+      val fullName = path.split(File.separator).lastOrNull()
+      if (fullName == null) {
+        return@mapNotNull null
+      }
+
+      return@mapNotNull ApkFileName.fromString(fullName)
     }
 
     if (apkNames.isEmpty()) {
@@ -72,13 +78,12 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
     return ListApksHandlerResult.Success
   }
 
-  private suspend fun filterBadCommitResults(apkNames: List<String>): HashMap<String, List<Commit>> {
-    val commits = apkNames.associateWith { apkName ->
+  private suspend fun filterBadCommitResults(apkFileNames: List<ApkFileName>): HashMap<ApkFileName, List<Commit>> {
+    val commits = apkFileNames.associateWith { apkName ->
       commitsRepository.getCommitsByApkVersion(apkName)
     }
 
-    val filteredCommits = HashMap<String, List<Commit>>(commits.size / 2)
-
+    val filteredCommits = HashMap<ApkFileName, List<Commit>>(commits.size / 2)
     for ((apkName, getCommitResult) in commits) {
       if (getCommitResult.isFailure) {
         logger.error(
@@ -95,13 +100,13 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
   }
 
   private fun buildIndexHtmlPage(
-    apkNames: List<String>,
-    commits: Map<String, List<Commit>>
+    apkFileNames: List<ApkFileName>,
+    commits: Map<ApkFileName, List<Commit>>
   ): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkNames, commits) }
+        body { createBody(apkFileNames, commits) }
       }
 
       appendln()
@@ -109,10 +114,10 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
   }
 
   private fun BODY.createBody(
-    apkNames: List<String>,
-    commits: Map<String, List<Commit>>
+    apkFileNames: List<ApkFileName>,
+    commits: Map<ApkFileName, List<Commit>>
   ) {
-    for (apkName in apkNames) {
+    for (apkName in apkFileNames) {
       val commitsForThisApk = commits[apkName]
         ?.take(LAST_COMMITS_COUNT)
         ?.joinToString("\n", transform = { commit -> commit.asString() })
@@ -121,13 +126,15 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
         logger.warn("Couldn't find any commits for apk ${apkName}")
       }
 
+      val fullApkName = apkName.getUuid() + ".apk"
+
       p {
-        a("http://94.140.116.243:8080/apk/${apkName}") {
+        a("${serverSettings.baseUrl}/apk/${fullApkName}") {
           if (commitsForThisApk != null) {
             title = commitsForThisApk
           }
 
-          +apkName
+          +fullApkName
         }
       }
     }

@@ -35,7 +35,7 @@ class TestModule(
       single { FileSystem() }
 
       // Repositories
-      single { CommitsRepository(get()) }
+      single { CommitsRepository() }
       single { ApkRepository() }
 
       // Services

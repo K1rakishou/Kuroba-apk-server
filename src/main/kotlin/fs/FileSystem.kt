@@ -1,7 +1,7 @@
 package fs
 
 import io.vertx.core.Vertx
-import io.vertx.ext.web.RoutingContext
+import io.vertx.core.buffer.Buffer
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import java.nio.charset.StandardCharsets
@@ -10,6 +10,39 @@ import kotlin.coroutines.suspendCoroutine
 
 class FileSystem : KoinComponent {
   private val vertx by inject<Vertx>()
+
+  suspend fun createFile(path: String): Result<Unit> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().createFile(path) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          continuation.resume(Result.success(Unit))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun removeFileAsync(path: String): Result<Unit> {
+    val fileExistsResult = fileExistsAsync(path)
+    if (fileExistsResult.isFailure) {
+      return Result.failure(fileExistsResult.exceptionOrNull()!!)
+    }
+
+    if (!fileExistsResult.getOrNull()!!) {
+      return Result.success(Unit)
+    }
+
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().delete(path) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          continuation.resume(Result.success(Unit))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
 
   suspend fun getUploadedApksAsync(path: String): Result<List<String>> {
     return suspendCoroutine { continuation ->
@@ -23,13 +56,22 @@ class FileSystem : KoinComponent {
     }
   }
 
-  suspend fun writeFileAsync(routingContext: RoutingContext, path: String): Result<Unit> {
-    routingContext.response().setChunked(true)
-
+  suspend fun readFileAsync(path: String): Result<Buffer> {
     return suspendCoroutine { continuation ->
       vertx.fileSystem().readFile(path) { asyncResult ->
         if (asyncResult.succeeded()) {
-          routingContext.response().write(asyncResult.result())
+          continuation.resume(Result.success(asyncResult.result()))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun writeFileAsync(path: String, data: Buffer): Result<Unit> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().writeFile(path, data) { asyncResult ->
+        if (asyncResult.succeeded()) {
           continuation.resume(Result.success(Unit))
         } else {
           continuation.resume(Result.failure(asyncResult.cause()))
