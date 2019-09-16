@@ -24,7 +24,7 @@ class CommitsRepository(
       return Result.failure(IllegalArgumentException("latestCommits is empty"))
     }
 
-    val parsedData = commitParser.parseLatestCommits(latestCommits)
+    val parsedData = commitParser.parseCommits(latestCommits)
     if (parsedData.isEmpty()) {
       logger.info("Couldn't parse any commits, latestCommits = $latestCommits")
       return Result.success(Unit)
