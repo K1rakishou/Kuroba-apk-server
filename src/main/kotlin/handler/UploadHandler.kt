@@ -3,7 +3,6 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
-import di.MainModule
 import extensions.toHex
 import handler.result.UploadHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -11,14 +10,12 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
-import org.koin.core.qualifier.named
 import repository.CommitsRepository
 import service.FileHeaderChecker
 import java.io.File
 
 class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
-  private val secretKey by inject<String>(named(MainModule.SECRET_KEY))
   private val commitsRepository by inject<CommitsRepository>()
   private val fileHeaderChecker by inject<FileHeaderChecker>()
 
@@ -51,7 +48,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     }
 
     val secretKey = routingContext.request().getHeader(SECRET_KEY_HEADER_NAME)
-    if (secretKey != this.secretKey) {
+    if (secretKey != serverSettings.secretKey) {
       logger.error("secretKey != providedSecretKey")
 
       sendResponse(
@@ -63,7 +60,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
       return UploadHandlerResult.SecretKeyIsBad
     }
 
-    val destFilePath = File(apksDir, apkVersionString).absolutePath
+    val destFilePath = File(serverSettings.apksDir, apkVersionString).absolutePath
 
     val fileExistsResult = fileSystem.fileExistsAsync(destFilePath)
     val exists = if (fileExistsResult.isFailure) {

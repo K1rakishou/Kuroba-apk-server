@@ -20,7 +20,7 @@ class UploadHandlerTest {
   @BeforeEach
   fun deployVerticle(vertx: Vertx, testContext: VertxTestContext) {
     startKoin {
-      modules(TestModule(vertx, File("src/test/resources"), "test_key").createTestModule())
+      modules(TestModule(vertx, "http://127.0.0.1:8080", File("src/test/resources"), "test_key").createTestModule())
     }
 
     vertx.deployVerticle(ServerVerticle(), testContext.completing())

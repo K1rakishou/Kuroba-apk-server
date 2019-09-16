@@ -4,17 +4,20 @@ import org.koin.core.context.startKoin
 import java.io.File
 
 fun main(args: Array<String>) {
-  if (args.size != 2) {
-    println("Not enough arguments! (secret key and apks dir must be provided!)")
+  if (args.size != 3) {
+    println("Not enough arguments! (base url, secret key and apks dir must be provided!)")
     return
   }
 
   val vertx = Vertx.vertx()
-  val secretKey = args[0]
-  val apksDirPath = args[1]
+  val baseUrl = args[0]
+  val secretKey = args[1]
+  val apksDirPath = args[2]
+
+  println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath")
 
   startKoin {
-    modules(MainModule(vertx, File(apksDirPath), secretKey).createMainModule())
+    modules(MainModule(vertx, baseUrl, File(apksDirPath), secretKey).createMainModule())
   }
 
   vertx.deployVerticle(ServerVerticle()) { ar ->

@@ -25,7 +25,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
       return GetApkHandlerResult.BadApkName
     }
 
-    val apkFilePath = String.format("%s${File.separator}%s", apksDir.absolutePath, apkName)
+    val apkFilePath = String.format("%s${File.separator}%s", serverSettings.apksDir.absolutePath, apkName)
 
     val fileExistsResult = fileSystem.fileExistsAsync(apkFilePath)
     val exists = if (fileExistsResult.isFailure) {

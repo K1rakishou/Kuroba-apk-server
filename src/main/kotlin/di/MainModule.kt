@@ -1,5 +1,6 @@
 package di
 
+import ServerSettings
 import fs.FileSystem
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
@@ -7,7 +8,6 @@ import handler.ListApksHandler
 import handler.UploadHandler
 import io.vertx.core.Vertx
 import org.koin.core.module.Module
-import org.koin.core.qualifier.named
 import org.koin.dsl.module
 import parser.CommitParser
 import repository.ApkRepository
@@ -17,6 +17,7 @@ import java.io.File
 
 class MainModule(
   private val vertx: Vertx,
+  private val baseUrl: String,
   private val apksDir: File,
   private val secretKey: String
 ) {
@@ -25,9 +26,13 @@ class MainModule(
     return module {
       single { vertx }
 
-      // Parameters
-      single<File>(qualifier = named(APKS_DIR)) { apksDir }
-      single<String>(qualifier = named(SECRET_KEY)) { secretKey }
+      single {
+        ServerSettings(
+          baseUrl = baseUrl,
+          apksDir = apksDir,
+          secretKey = secretKey
+        )
+      }
 
       // Misc
       single { CommitParser() }
@@ -46,10 +51,5 @@ class MainModule(
       single { ListApksHandler() }
       single { GetLatestUploadedCommitHashHandler() }
     }
-  }
-
-  companion object {
-    const val APKS_DIR = "apks_dir"
-    const val SECRET_KEY = "secret_key"
   }
 }

@@ -18,7 +18,7 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
   override suspend fun handle(routingContext: RoutingContext): ListApksHandlerResult {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
-    val getUploadedApksResult = fileSystem.getUploadedApksAsync(apksDir.absolutePath)
+    val getUploadedApksResult = fileSystem.getUploadedApksAsync(serverSettings.apksDir.absolutePath)
     val uploadedApks = if (getUploadedApksResult.isFailure) {
       logger.error("getUploadedApksAsync() returned exception ${getUploadedApksResult.exceptionOrNull()!!}")
 
@@ -122,7 +122,7 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
       }
 
       p {
-        a("http://127.0.0.1:8080/apk/${apkName}") {
+        a("http://94.140.116.243:8080/apk/${apkName}") {
           if (commitsForThisApk != null) {
             title = commitsForThisApk
           }

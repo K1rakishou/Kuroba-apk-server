@@ -1,4 +1,3 @@
-import di.MainModule
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
 import handler.ListApksHandler
@@ -13,13 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
 import org.koin.core.inject
-import org.koin.core.qualifier.named
-import java.io.File
 
 class ServerVerticle : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
-  private val apksDir by inject<File>(named(MainModule.APKS_DIR))
+  private val serverSettings by inject<ServerSettings>()
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()
   private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
@@ -28,8 +25,8 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
   override suspend fun start() {
     super.start()
 
-    if (!apksDir.exists()) {
-      throw RuntimeException("apksDir does not exist! dir = ${apksDir.absolutePath}")
+    if (!serverSettings.apksDir.exists()) {
+      throw RuntimeException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
     }
 
     val router = Router.router(vertx)
@@ -45,7 +42,7 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
       handle(routingContext) { getApkHandler.handle(routingContext) }
     }
     router.get("/latest_commit_hash").handler { routingContext ->
-      handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext)}
+      handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
     }
     router.get("/").handler { routingContext ->
       handle(routingContext) { listApksHandler.handle(routingContext) }
