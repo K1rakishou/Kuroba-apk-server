@@ -1,14 +1,15 @@
+import dispatchers.DispatcherProvider
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
 import handler.ListApksHandler
 import handler.UploadHandler
+import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
 import org.koin.core.inject
@@ -17,16 +18,22 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
   private val serverSettings by inject<ServerSettings>()
+  private val mainInitializer by inject<MainInitializer>()
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()
   private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
   private val listApksHandler by inject<ListApksHandler>()
+  private val dispatcherProvider by inject<DispatcherProvider>()
 
   override suspend fun start() {
     super.start()
 
     if (!serverSettings.apksDir.exists()) {
       throw RuntimeException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
+    }
+
+    if (!mainInitializer.initEverything()) {
+      throw RuntimeException("Initialization error")
     }
 
     vertx
@@ -65,10 +72,15 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
   }
 
   private fun handle(routingContext: RoutingContext, func: suspend () -> Unit) {
-    launch(Dispatchers.IO) {
+    launch(dispatcherProvider.IO()) {
       try {
         func()
       } catch (error: Exception) {
+        if (error is RuntimeException) {
+          // Crash the server whenever the RuntimeException is thrown
+          throw error
+        }
+
         logger.fatal("Unhandled handler exception", error)
 
         routingContext

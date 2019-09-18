@@ -1,6 +1,10 @@
 package repository
 
-import kotlinx.coroutines.*
+import dispatchers.DispatcherProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.KoinComponent
@@ -10,10 +14,12 @@ import kotlin.coroutines.CoroutineContext
 
 abstract class BaseRepository : KoinComponent, CoroutineScope {
   protected val database by inject<Database>()
+  private val dispatcherProvider by inject<DispatcherProvider>()
+
   private val job = SupervisorJob()
 
   override val coroutineContext: CoroutineContext
-    get() = Dispatchers.IO + job
+    get() = dispatcherProvider.IO() + job
 
   protected suspend fun <T> dbWrite(
     transactionIsolation: Int = Connection.TRANSACTION_REPEATABLE_READ,

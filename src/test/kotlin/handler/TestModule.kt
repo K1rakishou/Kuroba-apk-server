@@ -1,13 +1,18 @@
 package handler
 
 import ServerSettings
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.mock
+import dispatchers.DispatcherProvider
+import dispatchers.TestDispatcherProvider
 import fs.FileSystem
+import init.MainInitializer
 import io.vertx.core.Vertx
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import parser.CommitParser
 import repository.ApkRepository
-import repository.CommitsRepository
+import repository.CommitRepository
 import service.FileHeaderChecker
 import java.io.File
 
@@ -22,6 +27,13 @@ class TestModule(
     return module {
       single { vertx }
 
+      single<DispatcherProvider> { TestDispatcherProvider() }
+      single {
+        return@single mock<MainInitializer> {
+          onBlocking { initEverything() } doReturn true
+        }
+      }
+
       single {
         ServerSettings(
           baseUrl = baseUrl,
@@ -35,7 +47,7 @@ class TestModule(
       single { FileSystem() }
 
       // Repositories
-      single { CommitsRepository() }
+      single { CommitRepository() }
       single { ApkRepository() }
 
       // Services

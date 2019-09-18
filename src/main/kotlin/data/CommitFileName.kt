@@ -9,19 +9,26 @@ data class CommitFileName(
 
   fun getUuid(): String {
     return String.format(
-      COMMITS_FILE_FORMAT,
+      COMMITS_UUID_FORMAT,
       apkVersion.version,
       commitHash.hash
     )
   }
 
-  companion object {
-    // first %d - apk version
-    // %s - commit hash
-    const val COMMITS_FILE_FORMAT = "%d_%s_commits"
-    val COMMITS_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_commits\\.txt")
+  fun formatFileName(): String = formatFileName(apkVersion, commitHash) + ".txt"
 
-    fun formatUuid(apkVersion: ApkVersion, commitHash: CommitHash): String {
+  override fun toString(): String {
+    return getUuid()
+  }
+
+  companion object {
+    // %d - apk version
+    // %s - commit hash
+    const val COMMITS_UUID_FORMAT = "%d_%s"
+    const val COMMITS_FILE_FORMAT = "%d_%s_commits"
+    val COMMITS_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_commits\\.txt$")
+
+    fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash): String {
       return String.format(
         COMMITS_FILE_FORMAT,
         apkVersion.version,
@@ -31,7 +38,7 @@ data class CommitFileName(
 
     fun fromString(fullName: String): CommitFileName? {
       val matcher = COMMITS_FILE_NAME_PATTERN.matcher(fullName)
-      if (!matcher.matches()) {
+      if (!matcher.find()) {
         return null
       }
 

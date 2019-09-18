@@ -1,11 +1,15 @@
 package di
 
 import ServerSettings
+import dispatchers.DispatcherProvider
+import dispatchers.RealDispatcherProvider
 import fs.FileSystem
 import handler.GetApkHandler
 import handler.GetLatestUploadedCommitHashHandler
 import handler.ListApksHandler
 import handler.UploadHandler
+import init.CommitRepositoryInitializer
+import init.MainInitializer
 import io.vertx.core.Vertx
 import org.jetbrains.exposed.sql.Database
 import org.koin.core.module.Module
@@ -14,7 +18,7 @@ import parser.CommitParser
 import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
-import repository.CommitsRepository
+import repository.CommitRepository
 import service.FileHeaderChecker
 import java.io.File
 
@@ -29,6 +33,10 @@ class MainModule(
   fun createMainModule(): Module {
     return module {
       single { vertx }
+
+      single<DispatcherProvider> { RealDispatcherProvider() }
+      single { CommitRepositoryInitializer() }
+      single { MainInitializer() }
 
       single {
         ServerSettings(
@@ -46,7 +54,7 @@ class MainModule(
       single { FileSystem() }
 
       // Repositories
-      single { CommitsRepository() }
+      single { CommitRepository() }
       single { ApkRepository() }
 
       // Services

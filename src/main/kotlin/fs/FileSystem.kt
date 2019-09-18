@@ -5,6 +5,7 @@ import io.vertx.core.buffer.Buffer
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import java.nio.charset.StandardCharsets
+import java.util.regex.Pattern
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -44,30 +45,6 @@ class FileSystem : KoinComponent {
     }
   }
 
-  suspend fun getUploadedApksAsync(path: String): Result<List<String>> {
-    return suspendCoroutine { continuation ->
-      vertx.fileSystem().readDir(path) { asyncResult ->
-        if (asyncResult.succeeded()) {
-          continuation.resume(Result.success(asyncResult.result()))
-        } else {
-          continuation.resume(Result.failure(asyncResult.cause()))
-        }
-      }
-    }
-  }
-
-  suspend fun readFileAsync(path: String): Result<Buffer> {
-    return suspendCoroutine { continuation ->
-      vertx.fileSystem().readFile(path) { asyncResult ->
-        if (asyncResult.succeeded()) {
-          continuation.resume(Result.success(asyncResult.result()))
-        } else {
-          continuation.resume(Result.failure(asyncResult.cause()))
-        }
-      }
-    }
-  }
-
   suspend fun writeFileAsync(path: String, data: Buffer): Result<Unit> {
     return suspendCoroutine { continuation ->
       vertx.fileSystem().writeFile(path, data) { asyncResult ->
@@ -92,18 +69,19 @@ class FileSystem : KoinComponent {
     }
   }
 
-  suspend fun readJsonFileAsString(jsonFilePath: String): Result<String> {
+  suspend fun findFileAsync(path: String, filter: Pattern): Result<List<String>> {
     return suspendCoroutine { continuation ->
-      vertx.fileSystem().readFile(jsonFilePath) { asyncResult ->
+      vertx.fileSystem().readDir(path, filter.pattern()) { asyncResult ->
         if (asyncResult.succeeded()) {
-          val latestCommitsString = asyncResult.result().toString(StandardCharsets.UTF_8)
-          continuation.resume(Result.success(latestCommitsString))
+          continuation.resume(Result.success(asyncResult.result()))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
         }
       }
     }
   }
 
-  suspend fun copySourceFileToDestFile(sourcePath: String, destPath: String): Result<Unit> {
+  suspend fun copySourceFileToDestFileAsync(sourcePath: String, destPath: String): Result<Unit> {
     return suspendCoroutine { continuation ->
       vertx.fileSystem().copy(sourcePath, destPath) { asyncResult ->
         if (asyncResult.succeeded()) {
@@ -115,7 +93,20 @@ class FileSystem : KoinComponent {
     }
   }
 
-  suspend fun readBytes(filePath: String, offset: Int, size: Int): Result<ByteArray> {
+  suspend fun readFileAsStringAsync(filePath: String): Result<String> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().readFile(filePath) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          val latestCommitsString = asyncResult.result().toString(StandardCharsets.UTF_8)
+          continuation.resume(Result.success(latestCommitsString))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun readFileBytesAsync(filePath: String, offset: Int, size: Int): Result<ByteArray> {
     return suspendCoroutine { continuation ->
       vertx.fileSystem().readFile(filePath) { asyncResult ->
         if (asyncResult.succeeded()) {
@@ -130,6 +121,40 @@ class FileSystem : KoinComponent {
 
         } else {
           continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun readFileAsync(path: String): Result<Buffer> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().readFile(path) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          continuation.resume(Result.success(asyncResult.result()))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun enumerateFilesAsync(filePath: String, filter: Pattern? = null): Result<List<String>> {
+    return suspendCoroutine { continuation ->
+      if (filter == null) {
+        vertx.fileSystem().readDir(filePath) { asyncResult ->
+          if (asyncResult.succeeded()) {
+            continuation.resume(Result.success(asyncResult.result()))
+          } else {
+            continuation.resume(Result.failure(asyncResult.cause()))
+          }
+        }
+      } else {
+        vertx.fileSystem().readDir(filePath, filter.pattern()) { asyncResult ->
+          if (asyncResult.succeeded()) {
+            continuation.resume(Result.success(asyncResult.result()))
+          } else {
+            continuation.resume(Result.failure(asyncResult.cause()))
+          }
         }
       }
     }

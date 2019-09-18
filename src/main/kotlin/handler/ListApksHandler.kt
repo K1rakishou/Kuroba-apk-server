@@ -9,19 +9,20 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.koin.core.inject
-import repository.CommitsRepository
+import repository.CommitRepository
 import java.io.File
+import java.util.regex.Pattern
 
 class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
-  private val commitsRepository by inject<CommitsRepository>()
+  private val commitsRepository by inject<CommitRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): ListApksHandlerResult {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
-    val getUploadedApksResult = fileSystem.getUploadedApksAsync(serverSettings.apksDir.absolutePath)
+    val getUploadedApksResult = fileSystem.enumerateFilesAsync(serverSettings.apksDir.absolutePath, APK_PATTERN)
     val uploadedApks = if (getUploadedApksResult.isFailure) {
-      logger.error("getUploadedApksAsync() returned exception ${getUploadedApksResult.exceptionOrNull()!!}")
+      logger.error("getUploadedApksAsync() returned exception", getUploadedApksResult.exceptionOrNull()!!)
 
       sendResponse(
         routingContext,
@@ -35,11 +36,12 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
     }
 
     if (uploadedApks.isEmpty()) {
-      logger.info("No apks uploaded yet")
+      val message = "No apks uploaded yet"
+      logger.info(message)
 
       sendResponse(
         routingContext,
-        "No apks uploaded yet",
+        message,
         HttpResponseStatus.OK
       )
 
@@ -56,19 +58,35 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
     }
 
     if (apkNames.isEmpty()) {
-      logger.info("No apks uploaded yet")
+      val message = "No apks left after trying to get apk names"
+      logger.info(message)
 
       sendResponse(
         routingContext,
-        "No apks uploaded yet",
+        message,
         HttpResponseStatus.OK
       )
 
       return ListApksHandlerResult.NoApksUploaded
     }
 
-    val filteredCommit = filterBadCommitResults(apkNames)
-    val html = buildIndexHtmlPage(apkNames, filteredCommit)
+    val filteredCommits = filterBadCommitResults(apkNames)
+    if (filteredCommits.isEmpty()) {
+      val message = "No apks left after filtering bad apk names"
+      logger.info(message)
+
+      sendResponse(
+        routingContext,
+        message,
+        HttpResponseStatus.OK
+      )
+
+      return ListApksHandlerResult.NoApksLeftAfterFiltering
+    }
+
+    val html = buildIndexHtmlPage(
+      apkNames.sortedByDescending { apkName -> apkName.committedAt },
+      filteredCommits)
 
     routingContext
       .response()
@@ -142,5 +160,6 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
 
   companion object {
     private const val LAST_COMMITS_COUNT = 10
+    private val APK_PATTERN = Pattern.compile(".*\\.apk")
   }
 }

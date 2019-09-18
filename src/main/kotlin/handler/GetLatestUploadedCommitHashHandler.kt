@@ -5,11 +5,11 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
-import repository.CommitsRepository
+import repository.CommitRepository
 
 class GetLatestUploadedCommitHashHandler : AbstractHandler<GetLatestUploadedCommitHashHandlerResult>() {
   private val logger = LoggerFactory.getLogger(GetLatestUploadedCommitHashHandler::class.java)
-  private val commitsRepository by inject<CommitsRepository>()
+  private val commitsRepository by inject<CommitRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): GetLatestUploadedCommitHashHandlerResult {
     logger.info("New get latest uploaded commit hash request from ${routingContext.request().remoteAddress()}")

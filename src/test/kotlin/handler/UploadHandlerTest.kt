@@ -17,6 +17,7 @@ import java.io.File
 
 @ExtendWith(VertxExtension::class)
 class UploadHandlerTest {
+
   @BeforeEach
   fun deployVerticle(vertx: Vertx, testContext: VertxTestContext) {
     startKoin {

@@ -4,7 +4,6 @@ import data.ApkVersion
 import data.Commit
 import data.CommitHash
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
 import java.util.regex.Pattern
 
 class CommitParser {
@@ -31,7 +30,7 @@ class CommitParser {
       }
 
       val parsedTime = try {
-        DateTime.parse(timeString, COMMIT_DATE_TIME_FORMAT)
+        DateTime.parse(timeString, Commit.COMMIT_DATE_TIME_FORMAT)
       } catch (ignored: Throwable) {
         return@mapNotNull null
       }
@@ -51,9 +50,5 @@ class CommitParser {
     return parsedCommits.joinToString(separator = "\n") { commit ->
       commit.asString()
     }
-  }
-
-  companion object {
-    val COMMIT_DATE_TIME_FORMAT = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
   }
 }

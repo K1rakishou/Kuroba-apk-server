@@ -1,0 +1,8 @@
+package dispatchers
+
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+
+class TestDispatcherProvider : DispatcherProvider {
+  override fun IO(): CoroutineDispatcher = Dispatchers.Unconfined
+}

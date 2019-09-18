@@ -51,7 +51,7 @@ class ApkPersister : KoinComponent {
       return Result.failure(ApkFileIsTooBigException(apkSize))
     }
 
-    val copyResult = fileSystem.copySourceFileToDestFile(apkFile.uploadedFileName(), destFilePath)
+    val copyResult = fileSystem.copySourceFileToDestFileAsync(apkFile.uploadedFileName(), destFilePath)
     if (copyResult.isFailure) {
       logger.error(
         "Couldn't copy source file (${apkFile.uploadedFileName()}) into the destination file (${destFilePath})",
@@ -79,9 +79,10 @@ class ApkPersister : KoinComponent {
 
   private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit): Result<String> {
     val fileName = try {
-      ApkFileName.formatUuid(
+      ApkFileName.formatFileName(
         apkVersion,
-        latestCommit.commitHash
+        latestCommit.commitHash,
+        latestCommit.committedAt
       )
     } catch (error: Throwable) {
       return Result.failure(error)

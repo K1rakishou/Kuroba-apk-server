@@ -1,6 +1,7 @@
 package parser
 
 import data.ApkVersion
+import data.Commit
 import org.joda.time.DateTime
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -44,7 +45,7 @@ class CommitParserTest {
 
     assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[0].commitHash.hash)
     assertEquals(
-      DateTime.parse("2019-09-15 17:25:21", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 17:25:21", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[0].committedAt
     )
     assertEquals("trigger CI build good", commits[0].description)
@@ -68,43 +69,43 @@ class CommitParserTest {
     assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[9].commitHash.hash)
 
     assertEquals(
-      DateTime.parse("2019-09-15 20:04:09", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 20:04:09", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[0].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 19:54:42", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 19:54:42", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[1].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 19:28:20", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 19:28:20", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[2].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 19:11:58", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 19:11:58", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[3].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 18:11:58", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 18:11:58", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[4].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 18:07:57", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 18:07:57", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[5].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 17:53:03", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 17:53:03", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[6].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 17:42:52", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 17:42:52", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[7].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 17:29:58", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 17:29:58", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[8].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15 17:25:21", CommitParser.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15 17:25:21", Commit.COMMIT_DATE_TIME_FORMAT),
       commits[9].committedAt
     )
 

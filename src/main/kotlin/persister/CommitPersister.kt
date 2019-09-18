@@ -78,7 +78,7 @@ class CommitPersister : KoinComponent {
 
   private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit): Result<String> {
     val fileName = try {
-      CommitFileName.formatUuid(
+      CommitFileName.formatFileName(
         apkVersion,
         latestCommit.commitHash
       )

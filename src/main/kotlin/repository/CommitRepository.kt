@@ -10,14 +10,9 @@ import org.jetbrains.exposed.sql.*
 import org.koin.core.inject
 import parser.CommitParser
 
-class CommitsRepository : BaseRepository() {
-  private val logger = LoggerFactory.getLogger(CommitsRepository::class.java)
-
+class CommitRepository : BaseRepository() {
+  private val logger = LoggerFactory.getLogger(CommitRepository::class.java)
   private val commitParser by inject<CommitParser>()
-
-  suspend fun init() {
-    // TODO: restore everything
-  }
 
   suspend fun insertNewCommits(apkVersion: ApkVersion, latestCommits: String): Result<List<Commit>> {
     if (latestCommits.isEmpty()) {
@@ -72,8 +67,7 @@ class CommitsRepository : BaseRepository() {
         .orderBy(CommitTable.committedAt, SortOrder.DESC)
         .limit(1)
         .firstOrNull()
-        ?.let { resultRow -> resultRow[CommitTable.hash] }
-        ?.let { commitHash -> CommitHash(commitHash) }
+        ?.let { resultRow -> CommitHash(resultRow[CommitTable.hash]) }
     }
   }
 
@@ -101,8 +95,8 @@ class CommitsRepository : BaseRepository() {
       }
 
       CommitTable.batchInsert(filtered) { commit ->
-        this[CommitTable.uuid] = commit.apkUuid.uuid
-        this[CommitTable.groupUuid] = groupUuid.uuid
+        this[CommitTable.uuid] = commit.apkUuid
+        this[CommitTable.groupUuid] = groupUuid
         this[CommitTable.hash] = commit.commitHash.hash
         this[CommitTable.apkVersion] = commit.apkVersion.version
         this[CommitTable.committedAt] = commit.committedAt

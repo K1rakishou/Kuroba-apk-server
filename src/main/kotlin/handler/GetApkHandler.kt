@@ -5,7 +5,7 @@ import handler.result.GetApkHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
-import java.nio.file.Paths
+import java.util.regex.Pattern
 
 class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
@@ -15,38 +15,39 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
 
     val apkNameString = routingContext.pathParam(APK_NAME_PARAM)
     if (apkNameString.isNullOrEmpty()) {
-      logger.error("Apk name parameter is null or empty")
+      val message = "Apk name parameter is null or empty"
+      logger.error(message)
 
       sendResponse(
         routingContext,
-        "Bad apk name 1",
+        message,
         HttpResponseStatus.BAD_REQUEST
       )
 
       return GetApkHandlerResult.BadApkName
     }
 
-    val apkFileName = ApkFileName.fromString(apkNameString)
-    if (apkFileName == null) {
-      logger.error("Apk file name parameter is null, apkNameString = $apkNameString")
+    val apkUuid = ApkFileName.tryGetUuid(apkNameString)
+    if (apkUuid == null) {
+      val message = "Apk uuid parameter is null after trying to get the uuid from it, apkNameString = $apkNameString"
+      logger.error(message)
 
       sendResponse(
         routingContext,
-        "Bad apk name 2",
+        message,
         HttpResponseStatus.BAD_REQUEST
       )
 
       return GetApkHandlerResult.BadApkName
     }
 
-    val apkFilePath = Paths.get(
+    val findFileResult = fileSystem.findFileAsync(
       serverSettings.apksDir.absolutePath,
-      apkFileName.getUuid() + ".apk"
-    ).toFile().absolutePath
+      Pattern.compile(".*($apkUuid)_(\\d+)\\.apk")
+    )
 
-    val fileExistsResult = fileSystem.fileExistsAsync(apkFilePath)
-    val exists = if (fileExistsResult.isFailure) {
-      logger.error("fileExistsAsync() returned exception", fileExistsResult.exceptionOrNull()!!)
+    val foundFiles = if (findFileResult.isFailure) {
+      logger.error("findFileAsync() returned exception", findFileResult.exceptionOrNull()!!)
 
       sendResponse(
         routingContext,
@@ -54,13 +55,13 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return GetApkHandlerResult.GenericExceptionResult(fileExistsResult.exceptionOrNull()!!)
+      return GetApkHandlerResult.GenericExceptionResult(findFileResult.exceptionOrNull()!!)
     } else {
-      fileExistsResult.getOrNull()!!
+      findFileResult.getOrNull()!!
     }
 
-    if (!exists) {
-      logger.error("File $apkFilePath does not exist")
+    if (foundFiles.isEmpty()) {
+      logger.error("File with uuid $apkUuid does not exist")
 
       sendResponse(
         routingContext,
@@ -71,9 +72,13 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
       return GetApkHandlerResult.FileDoesNotExist
     }
 
-    val readFileResult = fileSystem.readFileAsync(apkFilePath)
+    if (foundFiles.size > 1) {
+      throw RuntimeException("Found more than one file with the same apk uuid: $foundFiles")
+    }
+
+    val readFileResult = fileSystem.readFileAsync(foundFiles.first())
     if (readFileResult.isFailure) {
-      logger.error("Error while reading file from the disk " + readFileResult.exceptionOrNull()!!)
+      logger.error("Error while reading file from the disk ", readFileResult.exceptionOrNull()!!)
 
       sendResponse(
         routingContext,

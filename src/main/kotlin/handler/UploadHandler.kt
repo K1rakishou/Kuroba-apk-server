@@ -14,12 +14,12 @@ import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
 import persister.ApkPersister
 import persister.CommitPersister
-import repository.CommitsRepository
+import repository.CommitRepository
 import service.FileHeaderChecker
 
 class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
-  private val commitsRepository by inject<CommitsRepository>()
+  private val commitsRepository by inject<CommitRepository>()
   private val fileHeaderChecker by inject<FileHeaderChecker>()
   private val commitPersister by inject<CommitPersister>()
   private val apkPersister by inject<ApkPersister>()
@@ -97,7 +97,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
       return UploadHandlerResult.RequestPartIsNotPresent
     }
 
-    val readBytesResult = fileSystem.readBytes(apkFile.uploadedFileName(), 0, 2)
+    val readBytesResult = fileSystem.readFileBytesAsync(apkFile.uploadedFileName(), 0, 2)
     if (readBytesResult.isFailure) {
       val message = "Couldn't read uploaded apk's header"
       logger.error(message, readBytesResult.exceptionOrNull()!!)
@@ -154,7 +154,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   ): Result<Unit> {
     val insertCommitsResult = insertNewCommits(apkVersion, commitsFile)
     if (insertCommitsResult.isFailure) {
-      logger.error("Couldn't insert new commits")
+      logger.error("Couldn't insert new commits", insertCommitsResult.exceptionOrNull()!!)
       return Result.failure(insertCommitsResult.exceptionOrNull()!!)
     }
 
@@ -163,13 +163,13 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     try {
       val storeCommitsResult = commitPersister.store(apkVersion, commits)
       if (storeCommitsResult.isFailure) {
-        logger.error("Couldn't persist commits on the disk")
+        logger.error("Couldn't persist commits on the disk", storeCommitsResult.exceptionOrNull()!!)
         throw storeCommitsResult.exceptionOrNull()!!
       }
 
       val storeApkResult = apkPersister.store(apkFile, apkVersion, commits)
       if (storeApkResult.isFailure) {
-        logger.error("Couldn't persist apk on the disk")
+        logger.error("Couldn't persist apk on the disk", storeApkResult.exceptionOrNull()!!)
         throw storeApkResult.exceptionOrNull()!!
       }
 
@@ -177,6 +177,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     } catch (error: Throwable) {
       // If one of these fails that means that the data is not consistent anymore so we can't do anything in such cause
       // and we need to terminate the server
+      // TODO: log errors as well
       if (commitsRepository.removeCommits(commits).isFailure) {
         throw RuntimeException("Couldn't remove inserted commits after unknown error during inserting")
       }
@@ -205,7 +206,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
       return Result.failure(CommitsFileIsTooBig())
     }
 
-    val readResult = fileSystem.readJsonFileAsString(latestCommitsFile.uploadedFileName())
+    val readResult = fileSystem.readFileAsStringAsync(latestCommitsFile.uploadedFileName())
     if (readResult.isFailure) {
       logger.error("Couldn't read latest commits file", readResult.exceptionOrNull()!!)
       return Result.failure(readResult.exceptionOrNull()!!)
