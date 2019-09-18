@@ -39,7 +39,7 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
       return Result.success(Unit)
     }
 
-    for ((_, commitFileName) in files.values) {
+    for ((_, commitFileName) in files) {
       val commitsFilePath =
         Paths.get(serverSettings.apksDir.absolutePath, commitFileName.formatFileName()).toFile().absolutePath
 
@@ -56,13 +56,13 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
       }
     }
 
-    logger.info("Restored ${files.values.size} files with commits")
+    logger.info("Restored ${files.size} files with commits")
     return Result.success(Unit)
   }
 
-  private suspend fun splitFiles(files: List<String>): Map<String, Pair<ApkFileName, CommitFileName>> {
+  private suspend fun splitFiles(files: List<String>): List<Pair<ApkFileName, CommitFileName>> {
     if (files.isEmpty()) {
-      return emptyMap()
+      return emptyList()
     }
 
     logger.info("splitFiles() got ${files.size} files to split")
@@ -82,7 +82,7 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
       throw RuntimeException("apkFiles.size (${apkFiles.size}) != commitFiles.size (${commitFiles.size})")
     }
 
-    val resultFiles = mutableMapOf<String, Pair<ApkFileName, CommitFileName>>()
+    val resultFiles = mutableListOf<Pair<ApkFileName, CommitFileName>>()
     val badCommitFiles = mutableSetOf<String>()
 
     for (apkFile in apkFiles) {
@@ -129,13 +129,13 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
             continue
           }
 
-          resultFiles[apkFileName.getUuid()] = Pair(apkFileName, commitFileName)
+          resultFiles += Pair(apkFileName, commitFileName)
           break
         }
       }
     }
 
-    return resultFiles
+    return resultFiles.sortedBy { (apkFileName, _) -> apkFileName.committedAt }
   }
 
 }
