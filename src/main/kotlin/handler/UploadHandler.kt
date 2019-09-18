@@ -177,17 +177,29 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     } catch (error: Throwable) {
       // If one of these fails that means that the data is not consistent anymore so we can't do anything in such cause
       // and we need to terminate the server
-      // TODO: log errors as well
-      if (commitsRepository.removeCommits(commits).isFailure) {
-        throw RuntimeException("Couldn't remove inserted commits after unknown error during inserting")
+
+      run {
+        val result = commitsRepository.removeCommits(commits)
+        if (result.isFailure) {
+          throw RuntimeException("Couldn't remove inserted commits after unknown error during inserting",
+            result.exceptionOrNull()!!)
+        }
       }
 
-      if (commitPersister.remove(apkVersion, commits).isFailure) {
-        throw RuntimeException("Couldn't remove commits file from disk after unknown error during storing")
+      run {
+        val result = commitPersister.remove(apkVersion, commits)
+        if (result.isFailure) {
+          throw RuntimeException("Couldn't remove commits file from disk after unknown error during storing",
+            result.exceptionOrNull()!!)
+        }
       }
 
-      if (apkPersister.remove(apkVersion, commits).isFailure) {
-        throw RuntimeException("Couldn't remove apk file from disk after unknown error during storing")
+      run {
+        val result = apkPersister.remove(apkVersion, commits)
+        if (result.isFailure) {
+          throw RuntimeException("Couldn't remove apk file from disk after unknown error during storing",
+            result.exceptionOrNull()!!)
+        }
       }
 
       return Result.failure(error)
