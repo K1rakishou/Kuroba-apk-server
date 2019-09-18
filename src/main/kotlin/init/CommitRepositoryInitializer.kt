@@ -45,13 +45,13 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
 
       val readFileResult = fileSystem.readFileAsStringAsync(commitsFilePath)
       if (readFileResult.isFailure) {
-        logger.error("Couldn't read commit file $commitsFilePath", readFileResult.exceptionOrNull()!!)
+        logger.error("Couldn't read commit file $commitsFilePath")
         return Result.failure(readFileResult.exceptionOrNull()!!)
       }
 
       val insertResult = commitRepository.insertNewCommits(commitFileName.apkVersion, readFileResult.getOrNull()!!)
       if (insertResult.isFailure) {
-        logger.error("Couldn't insert read from the file commits", insertResult.exceptionOrNull()!!)
+        logger.error("Couldn't insert read from the file commits")
         return Result.failure(insertResult.exceptionOrNull()!!)
       }
     }

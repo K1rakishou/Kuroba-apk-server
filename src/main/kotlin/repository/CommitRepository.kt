@@ -95,7 +95,7 @@ class CommitRepository : BaseRepository() {
       }
 
       if (filtered.isEmpty()) {
-        throw NoNewCommitsLeftAfterFiltering()
+        throw NoNewCommitsLeftAfterFiltering(commits)
       }
 
       CommitTable.batchInsert(filtered) { commit ->
@@ -145,5 +145,5 @@ class CommitRepository : BaseRepository() {
 
 class CommitsParseException : Exception("Couldn't parse commits, resulted in empty parsed data")
 class CommitValidationException : Exception("One of the parsed commits is not valid")
-class NoNewCommitsLeftAfterFiltering : Exception("No new commits left after filtering")
+class NoNewCommitsLeftAfterFiltering(commits: List<Commit>) : Exception("No new commits left after filtering, commits = ${commits}")
 class CommitUuidIsBlank : Exception("Commit uuid is blank")
