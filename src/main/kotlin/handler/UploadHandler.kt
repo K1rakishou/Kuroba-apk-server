@@ -132,7 +132,7 @@ class UploadHandler : AbstractHandler() {
       if (exception is NoNewCommitsLeftAfterFiltering) {
         sendResponse(
           routingContext,
-          "Apk with these commits has already been uploaded",
+          "An apk with these commits has already been uploaded",
           HttpResponseStatus.BAD_REQUEST)
 
         return Result.success(Unit)

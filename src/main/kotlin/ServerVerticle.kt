@@ -81,17 +81,17 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
           logger.error("Handler error", result.exceptionOrNull()!!)
         }
       } catch (error: Exception) {
-        if (error is RuntimeException) {
-          // Crash the server whenever the RuntimeException is thrown
-          throw error
-        }
-
-        logger.fatal("Unhandled handler exception", error)
-
         routingContext
           .response()
           .setStatusCode(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
           .end("Unknown server error")
+
+        if (error is RuntimeException) {
+          // Crash the server whenever the RuntimeException is thrown
+          throw error
+        } else {
+          logger.fatal("Unhandled handler exception", error)
+        }
       }
     }
   }

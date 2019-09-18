@@ -62,12 +62,16 @@ class CommitRepository : BaseRepository() {
 
   suspend fun getLatestCommitHash(): Result<CommitHash?> {
     return dbRead {
-      // TODO: this may be bad, figure out how to do this more effectively
-      CommitTable.selectAll()
+      val resultRow = CommitTable.selectAll()
         .orderBy(CommitTable.committedAt, SortOrder.DESC)
         .limit(1)
         .firstOrNull()
-        ?.let { resultRow -> CommitHash(resultRow[CommitTable.hash]) }
+
+      if (resultRow == null) {
+        return@dbRead null
+      }
+
+      return@dbRead CommitHash(resultRow[CommitTable.hash])
     }
   }
 
