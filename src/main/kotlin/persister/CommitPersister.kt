@@ -70,6 +70,7 @@ class CommitPersister : KoinComponent {
     val getFullPathResult = getFullPath(apkVersion, latestCommit)
 
     if (getFullPathResult.isFailure) {
+      logger.error("Couldn't get full path")
       return Result.failure(getFullPathResult.exceptionOrNull()!!)
     }
 
@@ -83,6 +84,7 @@ class CommitPersister : KoinComponent {
         latestCommit.commitHash
       )
     } catch (error: Throwable) {
+      logger.error("Error while trying to format commit file name")
       return Result.failure(error)
     }
 

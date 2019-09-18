@@ -1,8 +1,5 @@
 import dispatchers.DispatcherProvider
-import handler.GetApkHandler
-import handler.GetLatestUploadedCommitHashHandler
-import handler.ListApksHandler
-import handler.UploadHandler
+import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
@@ -19,11 +16,13 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
 
   private val serverSettings by inject<ServerSettings>()
   private val mainInitializer by inject<MainInitializer>()
+  private val dispatcherProvider by inject<DispatcherProvider>()
+
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()
   private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
   private val listApksHandler by inject<ListApksHandler>()
-  private val dispatcherProvider by inject<DispatcherProvider>()
+  private val viewCommitsHandler by inject<ViewCommitsHandler>()
 
   override suspend fun start() {
     super.start()
@@ -58,6 +57,9 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
       get("/latest_commit_hash").handler { routingContext ->
         handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
       }
+      get("/commits/:${ViewCommitsHandler.COMMIT_FILE_NAME_PARAM}").handler { routingContext ->
+        handle(routingContext) { viewCommitsHandler.handle(routingContext) }
+      }
       get("/").handler { routingContext ->
         handle(routingContext) { listApksHandler.handle(routingContext) }
       }
@@ -71,10 +73,13 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
       .setBodyLimit(MAX_APK_FILE_SIZE)
   }
 
-  private fun handle(routingContext: RoutingContext, func: suspend () -> Unit) {
+  private fun handle(routingContext: RoutingContext, func: suspend () -> Result<Unit>?) {
     launch(dispatcherProvider.IO()) {
       try {
-        func()
+        val result = func()
+        if (result != null && result.isFailure) {
+          logger.error("Handler error", result.exceptionOrNull()!!)
+        }
       } catch (error: Exception) {
         if (error is RuntimeException) {
           // Crash the server whenever the RuntimeException is thrown

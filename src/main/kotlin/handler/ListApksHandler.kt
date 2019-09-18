@@ -2,7 +2,6 @@ package handler
 
 import data.ApkFileName
 import data.Commit
-import handler.result.ListApksHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
@@ -13,16 +12,16 @@ import repository.CommitRepository
 import java.io.File
 import java.util.regex.Pattern
 
-class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
+class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
 
-  override suspend fun handle(routingContext: RoutingContext): ListApksHandlerResult {
+  override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
     val getUploadedApksResult = fileSystem.enumerateFilesAsync(serverSettings.apksDir.absolutePath, APK_PATTERN)
     val uploadedApks = if (getUploadedApksResult.isFailure) {
-      logger.error("getUploadedApksAsync() returned exception", getUploadedApksResult.exceptionOrNull()!!)
+      logger.error("getUploadedApksAsync() returned exception")
 
       sendResponse(
         routingContext,
@@ -30,7 +29,7 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return ListApksHandlerResult.GenericExceptionResult(getUploadedApksResult.exceptionOrNull()!!)
+      return Result.failure(getUploadedApksResult.exceptionOrNull()!!)
     } else {
       getUploadedApksResult.getOrNull()!!
     }
@@ -45,7 +44,7 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
         HttpResponseStatus.OK
       )
 
-      return ListApksHandlerResult.NoApksUploaded
+      return null
     }
 
     val apkNames = uploadedApks.mapNotNull { path ->
@@ -67,7 +66,7 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
         HttpResponseStatus.OK
       )
 
-      return ListApksHandlerResult.NoApksUploaded
+      return null
     }
 
     val filteredCommits = filterBadCommitResults(apkNames)
@@ -81,19 +80,17 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
         HttpResponseStatus.OK
       )
 
-      return ListApksHandlerResult.NoApksLeftAfterFiltering
+      return null
     }
 
-    val html = buildIndexHtmlPage(
-      apkNames.sortedByDescending { apkName -> apkName.committedAt },
-      filteredCommits)
+    val html = buildIndexHtmlPage(apkNames.sortedByDescending { apkName -> apkName.committedAt })
 
     routingContext
       .response()
       .setStatusCode(200)
       .end(html)
 
-    return ListApksHandlerResult.Success
+    return Result.success(Unit)
   }
 
   private suspend fun filterBadCommitResults(apkFileNames: List<ApkFileName>): HashMap<ApkFileName, List<Commit>> {
@@ -117,49 +114,37 @@ class ListApksHandler : AbstractHandler<ListApksHandlerResult>() {
     return filteredCommits
   }
 
-  private fun buildIndexHtmlPage(
-    apkFileNames: List<ApkFileName>,
-    commits: Map<ApkFileName, List<Commit>>
-  ): String {
+  private fun buildIndexHtmlPage(apkFileNames: List<ApkFileName>): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkFileNames, commits) }
+        body { createBody(apkFileNames) }
       }
 
       appendln()
     }
   }
 
-  private fun BODY.createBody(
-    apkFileNames: List<ApkFileName>,
-    commits: Map<ApkFileName, List<Commit>>
-  ) {
+  private fun BODY.createBody(apkFileNames: List<ApkFileName>) {
     for (apkName in apkFileNames) {
-      val commitsForThisApk = commits[apkName]
-        ?.take(LAST_COMMITS_COUNT)
-        ?.joinToString("\n", transform = { commit -> commit.asString() })
-
-      if (commitsForThisApk == null) {
-        logger.warn("Couldn't find any commits for apk ${apkName}")
-      }
-
-      val fullApkName = apkName.getUuid() + ".apk"
+      val fullApkNameFile = apkName.getUuid() + ".apk"
+      val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
 
       p {
-        a("${serverSettings.baseUrl}/apk/${fullApkName}") {
-          if (commitsForThisApk != null) {
-            title = commitsForThisApk
-          }
+        a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
+          +fullApkNameFile
+        }
 
-          +fullApkName
+        br {
+          a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
+            +"[View commits]"
+          }
         }
       }
     }
   }
 
   companion object {
-    private const val LAST_COMMITS_COUNT = 10
     private val APK_PATTERN = Pattern.compile(".*\\.apk")
   }
 }

@@ -58,6 +58,7 @@ class TestModule(
       single { GetApkHandler() }
       single { ListApksHandler() }
       single { GetLatestUploadedCommitHashHandler() }
+      single { ViewCommitsHandler() }
     }
   }
 

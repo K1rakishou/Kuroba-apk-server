@@ -27,6 +27,7 @@ data class CommitFileName(
     const val COMMITS_UUID_FORMAT = "%d_%s"
     const val COMMITS_FILE_FORMAT = "%d_%s_commits"
     val COMMITS_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_commits\\.txt$")
+    private val COMMIT_HASH_PATTERN = Pattern.compile("[0-9a-f]{5,40}")
 
     fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash): String {
       return String.format(
@@ -50,6 +51,25 @@ data class CommitFileName(
       } catch (error: Throwable) {
         null
       }
+    }
+
+    fun tryGetUuid(commitFileNameString: String): String? {
+      val matcher = COMMITS_FILE_NAME_PATTERN.matcher(commitFileNameString)
+      if (!matcher.find()) {
+        return null
+      }
+
+      val versionCode = matcher.group(1).toLongOrNull()
+      if (versionCode == null) {
+        return null
+      }
+
+      val commitHash = matcher.group(2)
+      if (!COMMIT_HASH_PATTERN.matcher(commitHash).matches()) {
+        return null
+      }
+
+      return String.format(COMMITS_UUID_FORMAT, versionCode, commitHash)
     }
   }
 

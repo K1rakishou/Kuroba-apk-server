@@ -1,16 +1,15 @@
 package handler
 
 import data.ApkFileName
-import handler.result.GetApkHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import java.util.regex.Pattern
 
-class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
+class GetApkHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
 
-  override suspend fun handle(routingContext: RoutingContext): GetApkHandlerResult {
+  override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New get apk request from ${routingContext.request().remoteAddress()}")
 
     val apkNameString = routingContext.pathParam(APK_NAME_PARAM)
@@ -24,7 +23,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return GetApkHandlerResult.BadApkName
+      return null
     }
 
     val apkUuid = ApkFileName.tryGetUuid(apkNameString)
@@ -38,7 +37,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return GetApkHandlerResult.BadApkName
+      return null
     }
 
     val findFileResult = fileSystem.findFileAsync(
@@ -47,7 +46,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
     )
 
     val foundFiles = if (findFileResult.isFailure) {
-      logger.error("findFileAsync() returned exception", findFileResult.exceptionOrNull()!!)
+      logger.error("findFileAsync() returned exception")
 
       sendResponse(
         routingContext,
@@ -55,7 +54,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return GetApkHandlerResult.GenericExceptionResult(findFileResult.exceptionOrNull()!!)
+      return Result.failure(findFileResult.exceptionOrNull()!!)
     } else {
       findFileResult.getOrNull()!!
     }
@@ -69,7 +68,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
         HttpResponseStatus.NOT_FOUND
       )
 
-      return GetApkHandlerResult.FileDoesNotExist
+      return null
     }
 
     if (foundFiles.size > 1) {
@@ -78,15 +77,15 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
 
     val readFileResult = fileSystem.readFileAsync(foundFiles.first())
     if (readFileResult.isFailure) {
-      logger.error("Error while reading file from the disk ", readFileResult.exceptionOrNull()!!)
+      logger.error("Error while reading file from the disk ")
 
       sendResponse(
         routingContext,
-        "Couldn't save read file from disk",
+        "Couldn't read file from disk",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return GetApkHandlerResult.GenericExceptionResult(readFileResult.exceptionOrNull()!!)
+      return Result.failure(readFileResult.exceptionOrNull()!!)
     }
 
     routingContext
@@ -96,7 +95,7 @@ class GetApkHandler : AbstractHandler<GetApkHandlerResult>() {
       .setStatusCode(200)
       .end()
 
-    return GetApkHandlerResult.Success
+    return Result.success(Unit)
   }
 
   companion object {

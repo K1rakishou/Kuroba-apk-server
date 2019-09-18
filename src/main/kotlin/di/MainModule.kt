@@ -4,10 +4,7 @@ import ServerSettings
 import dispatchers.DispatcherProvider
 import dispatchers.RealDispatcherProvider
 import fs.FileSystem
-import handler.GetApkHandler
-import handler.GetLatestUploadedCommitHashHandler
-import handler.ListApksHandler
-import handler.UploadHandler
+import handler.*
 import init.CommitRepositoryInitializer
 import init.MainInitializer
 import io.vertx.core.Vertx
@@ -68,6 +65,7 @@ class MainModule(
       single { GetApkHandler() }
       single { ListApksHandler() }
       single { GetLatestUploadedCommitHashHandler() }
+      single { ViewCommitsHandler() }
     }
   }
 }

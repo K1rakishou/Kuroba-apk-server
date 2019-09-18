@@ -6,7 +6,6 @@ import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import data.ApkVersion
 import data.Commit
 import extensions.toHex
-import handler.result.UploadHandlerResult
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
@@ -15,16 +14,17 @@ import org.koin.core.inject
 import persister.ApkPersister
 import persister.CommitPersister
 import repository.CommitRepository
+import repository.NoNewCommitsLeftAfterFiltering
 import service.FileHeaderChecker
 
-class UploadHandler : AbstractHandler<UploadHandlerResult>() {
+class UploadHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
   private val fileHeaderChecker by inject<FileHeaderChecker>()
   private val commitPersister by inject<CommitPersister>()
   private val apkPersister by inject<ApkPersister>()
 
-  override suspend fun handle(routingContext: RoutingContext): UploadHandlerResult {
+  override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
 
     val apkVersionString = routingContext.request().getHeader(APK_VERSION_HEADER_NAME)
@@ -37,7 +37,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.NoApkVersion
+      return null
     }
 
     val apkVersion = apkVersionString.toLongOrNull()
@@ -50,7 +50,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.ApkVersionMustBeNumeric
+      return null
     }
 
     val secretKey = routingContext.request().getHeader(SECRET_KEY_HEADER_NAME)
@@ -63,7 +63,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.SecretKeyIsBad
+      return null
     }
 
     if (routingContext.fileUploads().size != EXPECTED_AMOUNT_OF_FILES) {
@@ -78,7 +78,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.BadAmountOfRequestParts
+      return null
     }
 
     val (apkFile, commitsFile) = getFiles(routingContext.fileUploads())
@@ -94,7 +94,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.RequestPartIsNotPresent
+      return null
     }
 
     val readBytesResult = fileSystem.readFileBytesAsync(apkFile.uploadedFileName(), 0, 2)
@@ -108,7 +108,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return UploadHandlerResult.CouldNotReadApkFileHeader
+      return null
     }
 
     val header = readBytesResult.getOrNull()!!
@@ -123,12 +123,22 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.NotAnApkFile
+      return null
     }
 
     val storeResult = storeCommits(ApkVersion(apkVersion), commitsFile, apkFile)
     if (storeResult.isFailure) {
-      logger.error("Couldn't store commits", storeResult.exceptionOrNull()!!)
+      val exception = storeResult.exceptionOrNull()!!
+      if (exception is NoNewCommitsLeftAfterFiltering) {
+        sendResponse(
+          routingContext,
+          "Apk with these commits has already been uploaded",
+          HttpResponseStatus.BAD_REQUEST)
+
+        return Result.success(Unit)
+      }
+
+      logger.error("Couldn't store commits")
 
       sendResponse(
         routingContext,
@@ -136,7 +146,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
         HttpResponseStatus.BAD_REQUEST
       )
 
-      return UploadHandlerResult.GenericExceptionResult(storeResult.exceptionOrNull()!!)
+      return Result.failure(storeResult.exceptionOrNull()!!)
     }
 
     routingContext
@@ -144,7 +154,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
       .setStatusCode(200)
       .end("Uploaded apk with version code $apkVersionString")
 
-    return UploadHandlerResult.Success
+    return Result.success(Unit)
   }
 
   private suspend fun storeCommits(
@@ -154,7 +164,7 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
   ): Result<Unit> {
     val insertCommitsResult = insertNewCommits(apkVersion, commitsFile)
     if (insertCommitsResult.isFailure) {
-      logger.error("Couldn't insert new commits", insertCommitsResult.exceptionOrNull()!!)
+      logger.error("Couldn't insert new commits")
       return Result.failure(insertCommitsResult.exceptionOrNull()!!)
     }
 
@@ -163,13 +173,13 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
     try {
       val storeCommitsResult = commitPersister.store(apkVersion, commits)
       if (storeCommitsResult.isFailure) {
-        logger.error("Couldn't persist commits on the disk", storeCommitsResult.exceptionOrNull()!!)
+        logger.error("Couldn't persist commits on the disk")
         throw storeCommitsResult.exceptionOrNull()!!
       }
 
       val storeApkResult = apkPersister.store(apkFile, apkVersion, commits)
       if (storeApkResult.isFailure) {
-        logger.error("Couldn't persist apk on the disk", storeApkResult.exceptionOrNull()!!)
+        logger.error("Couldn't persist apk on the disk")
         throw storeApkResult.exceptionOrNull()!!
       }
 
@@ -220,13 +230,13 @@ class UploadHandler : AbstractHandler<UploadHandlerResult>() {
 
     val readResult = fileSystem.readFileAsStringAsync(latestCommitsFile.uploadedFileName())
     if (readResult.isFailure) {
-      logger.error("Couldn't read latest commits file", readResult.exceptionOrNull()!!)
+      logger.error("Couldn't read latest commits file")
       return Result.failure(readResult.exceptionOrNull()!!)
     }
 
     val insertResult = commitsRepository.insertNewCommits(apkVersion, readResult.getOrNull()!!)
     if (insertResult.isFailure) {
-      logger.error("Couldn't store new commits into the database", insertResult.exceptionOrNull()!!)
+      logger.error("Couldn't store new commits into the database")
       return Result.failure(insertResult.exceptionOrNull()!!)
     }
 

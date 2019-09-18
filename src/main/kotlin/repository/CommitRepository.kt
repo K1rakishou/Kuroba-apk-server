@@ -32,7 +32,7 @@ class CommitRepository : BaseRepository() {
 
     val insertResult = insertCommits(parsedCommits)
     if (insertResult.isFailure) {
-      logger.error("Couldn't insert new commits", insertResult.exceptionOrNull()!!)
+      logger.error("Couldn't insert new commits")
       return Result.failure(insertResult.exceptionOrNull()!!)
     }
 
@@ -123,8 +123,23 @@ class CommitRepository : BaseRepository() {
     }
   }
 
+  suspend fun getCommitsByUuid(commitUuid: String): Result<List<Commit>> {
+    if (commitUuid.isBlank()) {
+      return Result.failure(CommitUuidIsBlank())
+    }
+
+    return dbRead {
+      CommitTable.select {
+        CommitTable.groupUuid.eq(commitUuid)
+      }
+        .orderBy(CommitTable.committedAt, SortOrder.DESC)
+        .map { resultRow -> Commit.fromResultRow(resultRow) }
+    }
+  }
+
 }
 
 class CommitsParseException : Exception("Couldn't parse commits, resulted in empty parsed data")
 class CommitValidationException : Exception("One of the parsed commits is not valid")
 class NoNewCommitsLeftAfterFiltering : Exception("No new commits left after filtering")
+class CommitUuidIsBlank : Exception("Commit uuid is blank")
