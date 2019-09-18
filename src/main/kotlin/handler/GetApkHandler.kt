@@ -75,7 +75,10 @@ class GetApkHandler : AbstractHandler() {
       throw RuntimeException("Found more than one file with the same apk uuid: $foundFiles")
     }
 
-    val readFileResult = fileSystem.readFileAsync(foundFiles.first())
+    val apkPath = foundFiles.first()
+    val apkFileName = ApkFileName.fromString(apkPath)
+
+    val readFileResult = fileSystem.readFileAsync(apkPath)
     if (readFileResult.isFailure) {
       logger.error("Error while reading file from the disk ")
 
@@ -90,6 +93,7 @@ class GetApkHandler : AbstractHandler() {
 
     routingContext
       .response()
+      .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
       .setChunked(true)
       .write(readFileResult.getOrNull()!!)
       .setStatusCode(200)

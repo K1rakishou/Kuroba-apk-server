@@ -39,7 +39,8 @@ class MainModule(
         ServerSettings(
           baseUrl = baseUrl,
           apksDir = apksDir,
-          secretKey = secretKey
+          secretKey = secretKey,
+          apkName = "kuroba-nightly"
         )
       }
 

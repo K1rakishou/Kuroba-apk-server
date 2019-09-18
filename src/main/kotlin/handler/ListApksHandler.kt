@@ -126,18 +126,27 @@ class ListApksHandler : AbstractHandler() {
   }
 
   private fun BODY.createBody(apkFileNames: List<ApkFileName>) {
-    for (apkName in apkFileNames) {
+    for ((index, apkName) in apkFileNames.withIndex()) {
       val fullApkNameFile = apkName.getUuid() + ".apk"
       val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
 
       p {
         a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
-          +fullApkNameFile
+          +"${serverSettings.apkName}-${fullApkNameFile}"
+        }
+
+        if (index == 0) {
+          +" (LATEST)"
         }
 
         br {
-          a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
-            +"[View commits]"
+          val time = Commit.COMMIT_DATE_TIME_FORMAT.print(apkName.committedAt)
+          +" Uploaded on ${time}"
+
+          br {
+            a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
+              +"[View commits]"
+            }
           }
         }
       }
