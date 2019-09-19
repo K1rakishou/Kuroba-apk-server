@@ -40,7 +40,7 @@ class MainModule(
           baseUrl = baseUrl,
           apksDir = apksDir,
           secretKey = secretKey,
-          apkName = "kuroba-nightly"
+          apkName = "kuroba-dev"
         )
       }
 

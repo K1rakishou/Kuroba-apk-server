@@ -38,7 +38,8 @@ class TestModule(
         ServerSettings(
           baseUrl = baseUrl,
           apksDir = apksDir,
-          secretKey = secretKey
+          secretKey = secretKey,
+          apkName = "kuroba-dev"
         )
       }
 
@@ -60,11 +61,6 @@ class TestModule(
       single { GetLatestUploadedCommitHashHandler() }
       single { ViewCommitsHandler() }
     }
-  }
-
-  companion object {
-    const val APKS_DIR = "apks_dir"
-    const val SECRET_KEY = "secret_key"
   }
 
 }

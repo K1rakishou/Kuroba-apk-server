@@ -3,7 +3,7 @@ package data
 import db.table.CommitTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.joda.time.DateTime
-import org.joda.time.format.DateTimeFormat
+import org.joda.time.format.ISODateTimeFormat
 
 data class Commit(
   val apkVersion: ApkVersion,
@@ -57,7 +57,7 @@ data class Commit(
     const val MAX_DESCRIPTION_LENGTH = 1024
     const val MAX_UUID_LENGTH = 96
     const val MAX_HASH_LENGTH = 64
-    val COMMIT_DATE_TIME_FORMAT = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")
+    val COMMIT_DATE_TIME_FORMAT = ISODateTimeFormat.dateTimeParser()
 
     fun fromResultRow(resultRow: ResultRow): Commit {
       return Commit(
