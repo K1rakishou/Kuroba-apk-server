@@ -38,7 +38,7 @@ class CommitParser {
       }
 
       val parsedTime = try {
-        DateTime.parse(timeString, Commit.COMMIT_DATE_TIME_FORMAT)
+        DateTime.parse(timeString, Commit.COMMIT_DATE_TIME_PARSER)
       } catch (error: Throwable) {
         logger.info("Error while trying to parse commit date, error = ${error.message}")
         return@mapNotNull null

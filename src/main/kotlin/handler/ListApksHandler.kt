@@ -140,7 +140,7 @@ class ListApksHandler : AbstractHandler() {
         }
 
         br {
-          val time = Commit.COMMIT_DATE_TIME_FORMAT.print(apkName.committedAt)
+          val time = Commit.COMMIT_DATE_TIME_PRINTER.print(apkName.committedAt)
           +" Uploaded on ${time}"
 
           br {

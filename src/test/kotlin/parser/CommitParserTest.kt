@@ -44,7 +44,7 @@ class CommitParserTest {
 
     assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[0].commitHash.hash)
     assertEquals(
-      DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[0].committedAt
     )
     assertEquals("trigger CI build good", commits[0].description)
@@ -68,43 +68,43 @@ class CommitParserTest {
     assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[9].commitHash.hash)
 
     assertEquals(
-      DateTime.parse("2019-09-15T20:04:09+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T20:04:09+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[0].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T19:54:42+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T19:54:42+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[1].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T19:28:20+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T19:28:20+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[2].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T19:11:58+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T19:11:58+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[3].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T18:11:58+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T18:11:58+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[4].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T18:07:57+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T18:07:57+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[5].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T17:53:03+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T17:53:03+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[6].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T17:42:52+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T17:42:52+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[7].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T17:29:58+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T17:29:58+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[8].committedAt
     )
     assertEquals(
-      DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_FORMAT),
+      DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[9].committedAt
     )
 
@@ -118,5 +118,12 @@ class CommitParserTest {
     assertEquals("trigger CI build 8", commits[7].description)
     assertEquals("trigger CI build 9", commits[8].description)
     assertEquals("trigger CI build 10", commits[9].description)
+  }
+
+  @Test
+  fun `test datetime formatter printing`() {
+    val original = "2019-09-15T17:42:52+03:00"
+    val parsed = DateTime.parse(original, Commit.COMMIT_DATE_TIME_PARSER)
+    assertEquals(original, Commit.COMMIT_DATE_TIME_PRINTER.print(parsed))
   }
 }
