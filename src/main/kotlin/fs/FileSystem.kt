@@ -159,4 +159,16 @@ class FileSystem : KoinComponent {
       }
     }
   }
+
+  suspend fun getFileSize(fullPath: String): Result<Long> {
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().lprops(fullPath) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          continuation.resume(Result.success(asyncResult.result().size()))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
 }
