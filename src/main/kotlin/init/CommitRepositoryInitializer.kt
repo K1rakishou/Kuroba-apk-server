@@ -135,7 +135,7 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
       }
     }
 
-    return resultFiles.sortedBy { (apkFileName, _) -> apkFileName.committedAt }
+    return resultFiles.sortedBy { (apkFileName, _) -> apkFileName.uploadedOn }
   }
 
 }

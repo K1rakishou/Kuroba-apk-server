@@ -8,9 +8,11 @@ import data.Commit
 import fs.FileSystem
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
+import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import java.nio.file.Paths
+import java.util.regex.Pattern
 
 class ApkPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(ApkPersister::class.java)
@@ -25,9 +27,10 @@ class ApkPersister : KoinComponent {
   ): Result<Unit> {
     require(parsedCommits.isNotEmpty())
 
+    val now = DateTime.now()
     val apkSize = apkFile.size()
     val latestCommit = parsedCommits.first()
-    val getFullPathResult = getFullPath(apkVersion, latestCommit)
+    val getFullPathResult = getFullPath(apkVersion, latestCommit, now)
 
     if (getFullPathResult.isFailure) {
       return Result.failure(getFullPathResult.exceptionOrNull()!!)
@@ -68,21 +71,38 @@ class ApkPersister : KoinComponent {
     require(parsedCommits.isNotEmpty())
 
     val latestCommit = parsedCommits.first()
-    val getFullPathResult = getFullPath(apkVersion, latestCommit)
+    val apkUuid = ApkFileName.getUuid(apkVersion, latestCommit.commitHash)
 
-    if (getFullPathResult.isFailure) {
-      return Result.failure(getFullPathResult.exceptionOrNull()!!)
+    val findFileResult = fileSystem.findFileAsync(
+      serverSettings.apksDir.absolutePath,
+      Pattern.compile(".*($apkUuid)_(\\d+)\\.apk"))
+
+    if (findFileResult.isFailure) {
+      logger.error("findFileAsync() returned exception")
+      return Result.failure(findFileResult.exceptionOrNull()!!)
     }
 
-    return fileSystem.removeFileAsync(getFullPathResult.getOrNull()!!)
+    val foundFiles = findFileResult.getOrNull()!!
+    if (foundFiles.isEmpty()) {
+      logger.info("No files were found with uuid ${apkUuid}, nothing to remove")
+      return Result.success(Unit)
+    }
+
+    if (foundFiles.size > 1) {
+      val message = "More than one file was found with uuid ${apkUuid}, count = ${foundFiles.size}"
+      logger.error(message)
+      return Result.failure(MoreThanOneFileWithTheSameUuidFound(apkUuid, foundFiles.size))
+    }
+
+    return fileSystem.removeFileAsync(foundFiles.first())
   }
 
-  private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit): Result<String> {
+  private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit, now: DateTime): Result<String> {
     val fileName = try {
       ApkFileName.formatFileName(
         apkVersion,
         latestCommit.commitHash,
-        latestCommit.committedAt
+        now
       )
     } catch (error: Throwable) {
       return Result.failure(error)
@@ -92,6 +112,8 @@ class ApkPersister : KoinComponent {
     return Result.success(path)
   }
 
+  class MoreThanOneFileWithTheSameUuidFound(apkUuid: String, count: Int)
+    : Exception("More than one file was found with uuid ${apkUuid}, count = ${count}")
   class ApkFileIsTooBigException(apkSize: Long)
     : Exception("Apk file is too big, size = $apkSize max = ${ServerVerticle.MAX_APK_FILE_SIZE}")
   class CopyFileException

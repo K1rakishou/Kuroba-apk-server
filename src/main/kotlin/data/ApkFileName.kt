@@ -6,7 +6,7 @@ import java.util.regex.Pattern
 data class ApkFileName private constructor(
   val apkVersion: ApkVersion,
   val commitHash: CommitHash,
-  val committedAt: DateTime
+  val uploadedOn: DateTime
 ) {
 
   fun getUuid(): String {
@@ -24,18 +24,18 @@ data class ApkFileName private constructor(
 
     // first %d - apk version
     // %s - commit hash
-    // second %d - time of the last commit in the commits group
+    // second %d - time when the apk was uploaded to the server (time is local to the server)
     const val APK_FILE_FORMAT = "%d_%s_%d"
     val APK_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_(\\d+)\\.apk")
     val APK_FILE_NAME_NO_TIME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})\\.apk")
     private val COMMIT_HASH_PATTERN = Pattern.compile("[0-9a-f]{5,40}")
 
-    fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash, committedAt: DateTime): String {
+    fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash, now: DateTime): String {
       return String.format(
         APK_FILE_FORMAT,
         apkVersion.version,
         commitHash.hash,
-        committedAt.millis
+        now.millis
       )
     }
 

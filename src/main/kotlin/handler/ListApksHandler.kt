@@ -7,6 +7,8 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
+import org.joda.time.format.DateTimeFormatterBuilder
+import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
 import repository.CommitRepository
 import java.io.File
@@ -83,7 +85,7 @@ class ListApksHandler : AbstractHandler() {
       return null
     }
 
-    val html = buildIndexHtmlPage(apkNames.sortedByDescending { apkName -> apkName.committedAt })
+    val html = buildIndexHtmlPage(apkNames.sortedByDescending { apkName -> apkName.uploadedOn })
 
     routingContext
       .response()
@@ -140,7 +142,7 @@ class ListApksHandler : AbstractHandler() {
         }
 
         br {
-          val time = Commit.COMMIT_DATE_TIME_PRINTER.print(apkName.committedAt)
+          val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
           +" Uploaded on ${time}"
 
           br {
@@ -155,5 +157,11 @@ class ListApksHandler : AbstractHandler() {
 
   companion object {
     private val APK_PATTERN = Pattern.compile(".*\\.apk")
+
+    private val UPLOAD_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
+      .append(ISODateTimeFormat.date())
+      .appendLiteral(' ')
+      .append(ISODateTimeFormat.hourMinuteSecond())
+      .toFormatter()
   }
 }
