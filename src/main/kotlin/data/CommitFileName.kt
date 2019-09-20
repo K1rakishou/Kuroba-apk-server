@@ -3,15 +3,15 @@ package data
 import java.util.regex.Pattern
 
 data class CommitFileName(
-  val apkVersion: ApkVersion,
-  val commitHash: CommitHash
+  val apkVersion: Long,
+  val commitHash: String
 ) {
 
   fun getUuid(): String {
     return String.format(
       COMMITS_UUID_FORMAT,
-      apkVersion.version,
-      commitHash.hash
+      apkVersion,
+      commitHash
     )
   }
 
@@ -29,11 +29,11 @@ data class CommitFileName(
     val COMMITS_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_commits\\.txt$")
     private val COMMIT_HASH_PATTERN = Pattern.compile("[0-9a-f]{5,40}")
 
-    fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash): String {
+    fun formatFileName(apkVersion: Long, commitHash: String): String {
       return String.format(
         COMMITS_FILE_FORMAT,
-        apkVersion.version,
-        commitHash.hash
+        apkVersion,
+        commitHash
       )
     }
 
@@ -45,8 +45,8 @@ data class CommitFileName(
 
       return try {
         CommitFileName(
-          ApkVersion(matcher.group(1).toLong()),
-          CommitHash(matcher.group(2))
+          matcher.group(1).toLong(),
+          matcher.group(2)
         )
       } catch (error: Throwable) {
         null

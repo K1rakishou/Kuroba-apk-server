@@ -3,7 +3,6 @@ package persister
 import ServerSettings
 import ServerVerticle
 import data.ApkFileName
-import data.ApkVersion
 import data.Commit
 import fs.FileSystem
 import io.vertx.core.logging.LoggerFactory
@@ -14,15 +13,15 @@ import org.koin.core.inject
 import java.nio.file.Paths
 import java.util.regex.Pattern
 
-class ApkPersister : KoinComponent {
+open class ApkPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(ApkPersister::class.java)
 
   private val fileSystem by inject<FileSystem>()
   private val serverSettings by inject<ServerSettings>()
 
-  suspend fun store(
+  open suspend fun store(
     apkFile: FileUpload,
-    apkVersion: ApkVersion,
+    apkVersion: Long,
     parsedCommits: List<Commit>
   ): Result<Unit> {
     require(parsedCommits.isNotEmpty())
@@ -67,7 +66,7 @@ class ApkPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  suspend fun remove(apkVersion: ApkVersion, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty())
 
     val latestCommit = parsedCommits.first()
@@ -97,7 +96,7 @@ class ApkPersister : KoinComponent {
     return fileSystem.removeFileAsync(foundFiles.first())
   }
 
-  private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit, now: DateTime): Result<String> {
+  private fun getFullPath(apkVersion: Long, latestCommit: Commit, now: DateTime): Result<String> {
     val fileName = try {
       ApkFileName.formatFileName(
         apkVersion,

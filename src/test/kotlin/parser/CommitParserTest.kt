@@ -1,6 +1,5 @@
 package parser
 
-import data.ApkVersion
 import data.Commit
 import org.joda.time.DateTime
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -39,10 +38,10 @@ class CommitParserTest {
 
   @Test
   fun `parse bad commits`() {
-    val commits = commitParser.parseCommits(ApkVersion(444000), badCommits)
+    val commits = commitParser.parseCommits(444000, badCommits)
     assertEquals(1, commits.size)
 
-    assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[0].commitHash.hash)
+    assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[0].commitHash)
     assertEquals(
       DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[0].committedAt
@@ -52,20 +51,20 @@ class CommitParserTest {
 
   @Test
   fun `parse good commits`() {
-    val commits = commitParser.parseCommits(ApkVersion(444000), goodCommits)
+    val commits = commitParser.parseCommits(444000, goodCommits)
 
     assertEquals(10, commits.size)
 
-    assertEquals("34a1f35a27006dd379c8b00bcdf64d1bf4344824", commits[0].commitHash.hash)
-    assertEquals("f331d427addf7e7324e077b91b5043594298ed82", commits[1].commitHash.hash)
-    assertEquals("4c97a4587bb30d3fe4cb8997ee6d3034b390edba", commits[2].commitHash.hash)
-    assertEquals("10809f356ca657d222d678728aada9b0f52d51c6", commits[3].commitHash.hash)
-    assertEquals("63b13b3d73fd9487517e858ce204f302e3b9b092", commits[4].commitHash.hash)
-    assertEquals("f9aeb7a96f90943f184b1a2701c69e7b109316c7", commits[5].commitHash.hash)
-    assertEquals("974a9a48dad7fcd0c3e13ec3267d36ad0029c5cc", commits[6].commitHash.hash)
-    assertEquals("781b4fc8c575281859d73029232ce10318cb70e7", commits[7].commitHash.hash)
-    assertEquals("d5b07fec46a3edfb8e4e5cc94de68118d0d46704", commits[8].commitHash.hash)
-    assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[9].commitHash.hash)
+    assertEquals("34a1f35a27006dd379c8b00bcdf64d1bf4344824", commits[0].commitHash)
+    assertEquals("f331d427addf7e7324e077b91b5043594298ed82", commits[1].commitHash)
+    assertEquals("4c97a4587bb30d3fe4cb8997ee6d3034b390edba", commits[2].commitHash)
+    assertEquals("10809f356ca657d222d678728aada9b0f52d51c6", commits[3].commitHash)
+    assertEquals("63b13b3d73fd9487517e858ce204f302e3b9b092", commits[4].commitHash)
+    assertEquals("f9aeb7a96f90943f184b1a2701c69e7b109316c7", commits[5].commitHash)
+    assertEquals("974a9a48dad7fcd0c3e13ec3267d36ad0029c5cc", commits[6].commitHash)
+    assertEquals("781b4fc8c575281859d73029232ce10318cb70e7", commits[7].commitHash)
+    assertEquals("d5b07fec46a3edfb8e4e5cc94de68118d0d46704", commits[8].commitHash)
+    assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[9].commitHash)
 
     assertEquals(
       DateTime.parse("2019-09-15T20:04:09+03:00", Commit.COMMIT_DATE_TIME_PARSER),

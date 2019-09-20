@@ -116,8 +116,8 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
           continue
         }
 
-        if (apkFileName.apkVersion.version == commitFileName.apkVersion.version &&
-          apkFileName.commitHash.hash == commitFileName.commitHash.hash
+        if (apkFileName.apkVersion == commitFileName.apkVersion &&
+          apkFileName.commitHash == commitFileName.commitHash
         ) {
           if (apkFileName.getUuid() != commitFileName.getUuid()) {
             badCommitFiles += commitFile

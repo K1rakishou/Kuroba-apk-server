@@ -3,7 +3,6 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
-import data.ApkVersion
 import data.Commit
 import extensions.toHex
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -126,7 +125,7 @@ class UploadHandler : AbstractHandler() {
       return null
     }
 
-    val storeResult = storeCommits(ApkVersion(apkVersion), commitsFile, apkFile)
+    val storeResult = storeCommits(apkVersion, commitsFile, apkFile)
     if (storeResult.isFailure) {
       val exception = storeResult.exceptionOrNull()!!
       if (exception is NoNewCommitsLeftAfterFiltering) {
@@ -158,7 +157,7 @@ class UploadHandler : AbstractHandler() {
   }
 
   private suspend fun storeCommits(
-    apkVersion: ApkVersion,
+    apkVersion: Long,
     commitsFile: FileUpload,
     apkFile: FileUpload
   ): Result<Unit> {
@@ -217,7 +216,7 @@ class UploadHandler : AbstractHandler() {
   }
 
   private suspend fun insertNewCommits(
-    apkVersion: ApkVersion,
+    apkVersion: Long,
     latestCommitsFile: FileUpload
   ): Result<List<Commit>> {
     if (latestCommitsFile.size() > ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE) {
@@ -245,8 +244,8 @@ class UploadHandler : AbstractHandler() {
 
 
   private fun getFiles(fileUploads: Set<FileUpload>): Pair<FileUpload?, FileUpload?> {
-    val apkFile = fileUploads.firstOrNull { file -> file.name() == UPLOADING_FILE_NAME }
-    val commitsFile = fileUploads.firstOrNull { file -> file.name() == LATEST_COMMITS_FILE_NAME }
+    val apkFile = fileUploads.firstOrNull { file -> file.name() == APK_FILE_NAME }
+    val commitsFile = fileUploads.firstOrNull { file -> file.name() == COMMITS_FILE_NAME }
 
     return Pair(apkFile, commitsFile)
   }
@@ -254,8 +253,8 @@ class UploadHandler : AbstractHandler() {
   class CommitsFileIsTooBig : Exception("Commits file is too big")
 
   companion object {
-    private const val UPLOADING_FILE_NAME = "apk"
-    private const val LATEST_COMMITS_FILE_NAME = "latest_commits"
-    private const val EXPECTED_AMOUNT_OF_FILES = 2
+    const val APK_FILE_NAME = "apk"
+    const val COMMITS_FILE_NAME = "latest_commits"
+    const val EXPECTED_AMOUNT_OF_FILES = 2
   }
 }

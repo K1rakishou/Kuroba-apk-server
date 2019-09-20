@@ -26,7 +26,7 @@ class GetLatestUploadedCommitHashHandler : AbstractHandler() {
       return Result.failure(latestCommitHashResult.exceptionOrNull()!!)
     }
 
-    val latestCommitHash = latestCommitHashResult.getOrNull()?.hash ?: ""
+    val latestCommitHash = latestCommitHashResult.getOrNull() ?: ""
 
     routingContext
       .response()

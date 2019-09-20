@@ -8,19 +8,19 @@ import org.joda.time.format.ISODateTimeFormat
 
 
 data class Commit(
-  val apkVersion: ApkVersion,
-  val commitHash: CommitHash,
+  val apkVersion: Long,
+  val commitHash: String,
   val committedAt: DateTime,
   val description: String
 ) {
-  val apkUuid = String.format("%d_%s", apkVersion.version, commitHash.hash)
+  val apkUuid = String.format("%d_%s", apkVersion, commitHash)
 
   fun asString(): String {
-    return String.format("%s; %s; %s", commitHash.hash, COMMIT_DATE_TIME_PRINTER.print(committedAt), description)
+    return String.format("%s; %s; %s", commitHash, COMMIT_DATE_TIME_PRINTER.print(committedAt), description)
   }
 
   fun validate(): Boolean {
-    if (commitHash.hash.isBlank() || commitHash.hash.length > MAX_HASH_LENGTH) {
+    if (commitHash.isBlank() || commitHash.length > MAX_HASH_LENGTH) {
       return false
     }
 
@@ -46,8 +46,8 @@ data class Commit(
 
     other as Commit
 
-    return other.apkVersion.version == this.apkVersion.version
-      && other.commitHash.hash == this.commitHash.hash
+    return other.apkVersion == this.apkVersion
+      && other.commitHash == this.commitHash
   }
 
   override fun hashCode(): Int {
@@ -70,8 +70,8 @@ data class Commit(
 
     fun fromResultRow(resultRow: ResultRow): Commit {
       return Commit(
-        ApkVersion(resultRow[CommitTable.apkVersion]),
-        CommitHash(resultRow[CommitTable.hash]),
+        resultRow[CommitTable.apkVersion],
+        resultRow[CommitTable.hash],
         resultRow[CommitTable.committedAt],
         resultRow[CommitTable.description]
       )
@@ -79,7 +79,3 @@ data class Commit(
   }
 
 }
-
-inline class ApkVersion(val version: Long)
-
-inline class CommitHash(val hash: String)

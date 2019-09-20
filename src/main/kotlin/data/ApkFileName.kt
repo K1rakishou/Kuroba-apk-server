@@ -4,8 +4,8 @@ import org.joda.time.DateTime
 import java.util.regex.Pattern
 
 data class ApkFileName private constructor(
-  val apkVersion: ApkVersion,
-  val commitHash: CommitHash,
+  val apkVersion: Long,
+  val commitHash: String,
   val uploadedOn: DateTime
 ) {
 
@@ -30,11 +30,11 @@ data class ApkFileName private constructor(
     val APK_FILE_NAME_NO_TIME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})\\.apk")
     private val COMMIT_HASH_PATTERN = Pattern.compile("[0-9a-f]{5,40}")
 
-    fun formatFileName(apkVersion: ApkVersion, commitHash: CommitHash, now: DateTime): String {
+    fun formatFileName(apkVersion: Long, commitHash: String, now: DateTime): String {
       return String.format(
         APK_FILE_FORMAT,
-        apkVersion.version,
-        commitHash.hash,
+        apkVersion,
+        commitHash,
         now.millis
       )
     }
@@ -47,8 +47,8 @@ data class ApkFileName private constructor(
 
       return try {
         ApkFileName(
-          ApkVersion(matcher.group(1).toLong()),
-          CommitHash(matcher.group(2)),
+          matcher.group(1).toLong(),
+          matcher.group(2),
           DateTime(matcher.group(3).toLong())
         )
       } catch (error: Throwable) {
@@ -56,11 +56,11 @@ data class ApkFileName private constructor(
       }
     }
 
-    fun getUuid(apkVersion: ApkVersion, commitHash: CommitHash): String {
+    fun getUuid(apkVersion: Long, commitHash: String): String {
       return String.format(
         APK_UUID_FORMAT,
-        apkVersion.version,
-        commitHash.hash
+        apkVersion,
+        commitHash
       )
     }
 

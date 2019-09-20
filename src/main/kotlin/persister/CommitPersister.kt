@@ -1,7 +1,6 @@
 package persister
 
 import ServerSettings
-import data.ApkVersion
 import data.Commit
 import data.CommitFileName
 import fs.FileSystem
@@ -12,14 +11,14 @@ import org.koin.core.inject
 import parser.CommitParser
 import java.nio.file.Paths
 
-class CommitPersister : KoinComponent {
+open class CommitPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(CommitPersister::class.java)
 
   private val commitParser by inject<CommitParser>()
   private val serverSettings by inject<ServerSettings>()
   private val fileSystem by inject<FileSystem>()
 
-  suspend fun store(apkVersion: ApkVersion, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun store(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty())
 
     val latestCommit = parsedCommits.first()
@@ -63,7 +62,7 @@ class CommitPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  suspend fun remove(apkVersion: ApkVersion, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty())
 
     val latestCommit = parsedCommits.first()
@@ -77,7 +76,7 @@ class CommitPersister : KoinComponent {
     return fileSystem.removeFileAsync(getFullPathResult.getOrNull()!!)
   }
 
-  private fun getFullPath(apkVersion: ApkVersion, latestCommit: Commit): Result<String> {
+  private fun getFullPath(apkVersion: Long, latestCommit: Commit): Result<String> {
     val fileName = try {
       CommitFileName.formatFileName(
         apkVersion,

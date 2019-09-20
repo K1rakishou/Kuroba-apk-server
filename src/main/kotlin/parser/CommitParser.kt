@@ -1,8 +1,6 @@
 package parser
 
-import data.ApkVersion
 import data.Commit
-import data.CommitHash
 import io.vertx.core.logging.LoggerFactory
 import org.joda.time.DateTime
 import java.util.regex.Pattern
@@ -11,7 +9,7 @@ class CommitParser {
   private val logger = LoggerFactory.getLogger(CommitParser::class.java)
   private val regex = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
 
-  fun parseCommits(apkVersion: ApkVersion, commitsString: String): List<Commit> {
+  fun parseCommits(apkVersion: Long, commitsString: String): List<Commit> {
     val split = commitsString.split('\n')
     if (split.isEmpty()) {
       logger.error("Couldn't split commits into separate lines")
@@ -46,7 +44,7 @@ class CommitParser {
 
       return@mapNotNull Commit(
         apkVersion,
-        CommitHash(hash),
+        hash,
         parsedTime,
         description)
     }

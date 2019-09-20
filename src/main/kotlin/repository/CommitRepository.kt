@@ -1,9 +1,7 @@
 package repository
 
 import data.ApkFileName
-import data.ApkVersion
 import data.Commit
-import data.CommitHash
 import db.table.CommitTable
 import io.vertx.core.logging.LoggerFactory
 import org.jetbrains.exposed.sql.*
@@ -14,7 +12,7 @@ class CommitRepository : BaseRepository() {
   private val logger = LoggerFactory.getLogger(CommitRepository::class.java)
   private val commitParser by inject<CommitParser>()
 
-  suspend fun insertNewCommits(apkVersion: ApkVersion, latestCommits: String): Result<List<Commit>> {
+  suspend fun insertNewCommits(apkVersion: Long, latestCommits: String): Result<List<Commit>> {
     if (latestCommits.isEmpty()) {
       return Result.failure(IllegalArgumentException("latestCommits is empty"))
     }
@@ -60,7 +58,7 @@ class CommitRepository : BaseRepository() {
     }
   }
 
-  suspend fun getLatestCommitHash(): Result<CommitHash?> {
+  suspend fun getLatestCommitHash(): Result<String?> {
     return dbRead {
       val resultRow = CommitTable.selectAll()
         .orderBy(CommitTable.committedAt, SortOrder.DESC)
@@ -71,7 +69,7 @@ class CommitRepository : BaseRepository() {
         return@dbRead null
       }
 
-      return@dbRead CommitHash(resultRow[CommitTable.hash])
+      return@dbRead resultRow[CommitTable.hash]
     }
   }
 
@@ -79,8 +77,8 @@ class CommitRepository : BaseRepository() {
     require(commits.isNotEmpty())
 
     return dbWrite {
-      val apkVersions = commits.map { commit -> commit.apkVersion.version }
-      val hashes = commits.map { commit -> commit.commitHash.hash }
+      val apkVersions = commits.map { commit -> commit.apkVersion }
+      val hashes = commits.map { commit -> commit.commitHash }
       val groupUuid = commits.first().apkUuid
 
       val alreadyInserted = CommitTable.select {
@@ -101,8 +99,8 @@ class CommitRepository : BaseRepository() {
       CommitTable.batchInsert(filtered) { commit ->
         this[CommitTable.uuid] = commit.apkUuid
         this[CommitTable.groupUuid] = groupUuid
-        this[CommitTable.hash] = commit.commitHash.hash
-        this[CommitTable.apkVersion] = commit.apkVersion.version
+        this[CommitTable.hash] = commit.commitHash
+        this[CommitTable.apkVersion] = commit.apkVersion
         this[CommitTable.committedAt] = commit.committedAt
         this[CommitTable.description] = commit.description
       }
@@ -115,8 +113,8 @@ class CommitRepository : BaseRepository() {
     require(commits.isNotEmpty())
 
     return dbWrite {
-      val apkVersions = commits.map { commit -> commit.apkVersion.version }
-      val hashes = commits.map { commit -> commit.commitHash.hash }
+      val apkVersions = commits.map { commit -> commit.apkVersion }
+      val hashes = commits.map { commit -> commit.commitHash }
 
       CommitTable.deleteWhere {
         CommitTable.apkVersion.inList(apkVersions) and
