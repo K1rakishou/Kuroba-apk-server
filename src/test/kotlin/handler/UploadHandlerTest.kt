@@ -30,6 +30,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.joda.time.DateTime
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -40,6 +41,8 @@ import org.mockito.Mockito
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 
 
 @ExtendWith(VertxExtension::class)
@@ -288,7 +291,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
-        doReturn(Result.failure<List<Commit>>(IOException("BAM"))).`when`(commitsRepository).insertCommits(anyLong(), anyString())
+        doReturn(Result.failure<List<Commit>>(IOException("BAM"))).`when`(commitsRepository)
+          .insertCommits(anyLong(), anyString())
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -390,7 +394,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
-        doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apkPersister).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+        doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apkPersister)
+          .store(anyOrNull(), anyLong(), anyList(), anyOrNull())
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -437,7 +442,10 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals("112233_8acb72611099915c81998776641606b1b47db583", commits.first().apkUuid)
           assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
           assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
-          assertEquals(Commit.COMMIT_DATE_TIME_PRINTER.parseDateTime("2019-09-19T14:52:49+00:00"), commits.first().committedAt)
+          assertEquals(
+            Commit.COMMIT_DATE_TIME_PRINTER.parseDateTime("2019-09-19T14:52:49+00:00"),
+            commits.first().committedAt
+          )
           assertEquals(1, commits.count { it.head })
 
           val apks = ApkTable.selectAll()
@@ -446,8 +454,10 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals(1, apks.size)
 
           assertEquals("112233_8acb72611099915c81998776641606b1b47db583", apks.first().apkUuid)
-          assertEquals("F:\\projects\\java\\current\\kuroba-server\\src\\test\\resources\\test_dump\\" +
-            "112233_8acb72611099915c81998776641606b1b47db583_1570287894192", apks.first().apkFullPath)
+          assertEquals(
+            "F:\\projects\\java\\current\\kuroba-server\\src\\test\\resources\\test_dump\\" +
+              "112233_8acb72611099915c81998776641606b1b47db583_1570287894192", apks.first().apkFullPath
+          )
           assertEquals(1570287894192, apks.first().uploadedOn.millis)
         }
 
@@ -476,6 +486,134 @@ class UploadHandlerTest : AbstractHandlerTest() {
         val body = response.body()
         assertEquals("Uploaded apk with version code 112233", body)
       })
+  }
+
+  @Test
+  fun `test many uploaded apks multithreaded`(vertx: Vertx, testContext: VertxTestContext) {
+    startKoin {
+      modules(getModule(vertx, database))
+    }
+
+    val dir = File(serverSettings.apksDir, "generated")
+    if (!dir.exists()) {
+      assertTrue(dir.mkdirs())
+    }
+
+    fun generateApksWithCommits(): List<Pair<MultipartForm, MultiMap>> {
+      val result = mutableListOf<Pair<MultipartForm, MultiMap>>()
+
+      for (i in 0 until 100) {
+        val apkFile = File(dir, "${i}.apk")
+        apkFile.writeText(String(byteArrayOf(0x50, 0x4B)) + "${i}")
+
+        val commitFile = File(dir, "${i}_commits.txt")
+        val commitText = String.format(
+          "%d; %s; %s",
+          1000000 + i,
+          Commit.COMMIT_DATE_TIME_PRINTER.print(1571111111111),
+          "description ${i}"
+        )
+        commitFile.writeText(commitText)
+
+        val headers = headersOf(
+          Pair(APK_VERSION_HEADER_NAME, i.toString()),
+          Pair(SECRET_KEY_HEADER_NAME, "test_key")
+        )
+
+        val files = multipartFormOf(
+          Triple(APK_FILE_NAME, apkFile, APK_MIME_TYPE),
+          Triple(COMMITS_FILE_NAME, commitFile, COMMITS_MIME_TYPE)
+        )
+
+        result += Pair(files, headers)
+      }
+
+      return result
+    }
+
+    suspend fun sendRequest(
+      vertx: Vertx,
+      data: List<Pair<MultipartForm, MultiMap>>,
+      mocks: suspend () -> Unit,
+      uploadedTestFunc: suspend (HttpResponse<String>) -> Unit,
+      allUploadedTestFunc: suspend () -> Unit
+    ) {
+      mocks()
+
+      val countDownLatch = CountDownLatch(data.size)
+      val executor = Executors.newFixedThreadPool(100)
+
+      vertx.deployVerticle(ServerVerticle())
+      val client = WebClient.create(vertx)
+
+      val futures = data.mapIndexed { index, (mf, mm) ->
+        return@mapIndexed executor.submit {
+          println("[${Thread.currentThread().name}] Sending request $index")
+
+          client
+            .post(8080, "localhost", "/upload")
+            .putHeaders(mm)
+            .`as`(BodyCodec.string())
+            .sendMultipartForm(mf) { asyncResult ->
+              runBlocking {
+                try {
+                  uploadedTestFunc(asyncResult.result())
+                } catch (error: Throwable) {
+                  testContext.failNow(error)
+                } finally {
+                  countDownLatch.countDown()
+                }
+              }
+            }
+        }
+      }
+
+      try {
+        futures.forEach { it.get() }
+        countDownLatch.await()
+      } catch (error: Throwable) {
+        testContext.failNow(error)
+      }
+
+      allUploadedTestFunc()
+      vertx.close()
+    }
+
+    runBlocking {
+      val filesWithHeader = generateApksWithCommits()
+
+      sendRequest(
+        vertx,
+        filesWithHeader, {
+          doReturn(true).`when`(mainInitializer).initEverything()
+        }, { response ->
+          assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
+        }, {
+          assertEquals(100, commitsRepository.getCommitsCount().getOrNull()!!)
+          assertEquals(100, apksRepository.getTotalApksCount().getOrNull()!!)
+
+          val allFiles = dir.listFiles()!!
+          assertEquals(200, allFiles.size)
+
+          val apks = allFiles.filter { file -> file.name.endsWith(".apk") }
+          assertEquals(100, apks.size)
+
+          val commits = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
+          assertEquals(100, commits.size)
+
+          serverSettings.apksDir.listFiles()!!.forEach { file ->
+            if (file.isFile) {
+              assertTrue(file.delete())
+            } else if (file.isDirectory) {
+              assertTrue(file.deleteRecursively())
+            }
+          }
+        }
+      )
+    }
+
+    stopKoin()
+    testContext.completeNow()
   }
 
 }
