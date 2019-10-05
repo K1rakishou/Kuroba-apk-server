@@ -202,6 +202,3 @@ open class FileSystem : KoinComponent {
     private const val APK_NAME_REGEX_FORMAT = ".*(%s)_(\\d+)\\.apk"
   }
 }
-
-class FileNotFoundException(apksDir: String, fileName: String)
-  : Exception("File ${fileName} not found in directory ${apksDir}")
