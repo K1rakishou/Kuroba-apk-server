@@ -11,7 +11,7 @@ import repository.CommitRepository
 import java.io.File
 import java.nio.file.Paths
 
-class CommitRepositoryInitializer : Initializer, KoinComponent {
+open class CommitRepositoryInitializer : Initializer, KoinComponent {
   private val logger = LoggerFactory.getLogger(CommitRepositoryInitializer::class.java)
 
   private val serverSettings by inject<ServerSettings>()
@@ -49,7 +49,7 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
         return Result.failure(readFileResult.exceptionOrNull()!!)
       }
 
-      val insertResult = commitRepository.insertNewCommits(commitFileName.apkVersion, readFileResult.getOrNull()!!)
+      val insertResult = commitRepository.insertCommits(commitFileName.apkVersion, readFileResult.getOrNull()!!)
       if (insertResult.isFailure) {
         logger.error("Couldn't insert read from the file commits")
         return Result.failure(insertResult.exceptionOrNull()!!)
@@ -67,34 +67,28 @@ class CommitRepositoryInitializer : Initializer, KoinComponent {
 
     logger.info("splitFiles() got ${files.size} files to split")
 
-    val apkFiles = mutableSetOf<String>()
+    val apkFilePathList = mutableSetOf<String>()
     val commitFiles = mutableSetOf<String>()
 
     for (file in files) {
       when {
         file.endsWith("_commits.txt") -> commitFiles += file
-        file.endsWith(".apk") -> apkFiles += file
+        file.endsWith(".apk") -> apkFilePathList += file
         else -> logger.error("Unknown file: $file")
       }
     }
 
-    if (apkFiles.size != commitFiles.size) {
-      throw RuntimeException("apkFiles.size (${apkFiles.size}) != commitFiles.size (${commitFiles.size})")
+    if (apkFilePathList.size != commitFiles.size) {
+      throw RuntimeException("apkFilePathList.size (${apkFilePathList.size}) != commitFiles.size (${commitFiles.size})")
     }
 
     val resultFiles = mutableListOf<Pair<ApkFileName, CommitFileName>>()
     val badCommitFiles = mutableSetOf<String>()
 
-    for (apkFile in apkFiles) {
-      val apkFileNameString = apkFile.split(File.separator).lastOrNull()
-      if (apkFileNameString == null) {
-        logger.error("Couldn't extract file name from file path: $apkFile")
-        continue
-      }
-
-      val apkFileName = ApkFileName.fromString(apkFileNameString)
+    for (apkFilePath in apkFilePathList) {
+      val apkFileName = ApkFileName.fromString(apkFilePath)
       if (apkFileName == null) {
-        logger.error("Bad apk file: $apkFile")
+        logger.error("Bad apk file path: $apkFilePath")
         continue
       }
 

@@ -5,6 +5,7 @@ import dispatchers.DispatcherProvider
 import dispatchers.RealDispatcherProvider
 import fs.FileSystem
 import handler.*
+import init.ApkRepositoryInitializer
 import init.CommitRepositoryInitializer
 import init.MainInitializer
 import io.vertx.core.Vertx
@@ -33,6 +34,7 @@ class MainModule(
 
       single<DispatcherProvider> { RealDispatcherProvider() }
       single { CommitRepositoryInitializer() }
+      single { ApkRepositoryInitializer() }
       single { MainInitializer() }
 
       single {

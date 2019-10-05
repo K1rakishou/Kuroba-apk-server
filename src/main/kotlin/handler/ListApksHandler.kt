@@ -10,33 +10,33 @@ import kotlinx.html.stream.appendHTML
 import org.joda.time.format.DateTimeFormatterBuilder
 import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
+import repository.ApkRepository
 import repository.CommitRepository
-import java.io.File
-import java.util.regex.Pattern
 
-class ListApksHandler : AbstractHandler() {
+open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
+  private val apksRepository by inject<ApkRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
 
-    val getUploadedApksResult = fileSystem.enumerateFilesAsync(serverSettings.apksDir.absolutePath, APK_PATTERN)
-    val uploadedApks = if (getUploadedApksResult.isFailure) {
-      logger.error("getUploadedApksAsync() returned exception")
+    val apksCountResult = apksRepository.getTotalApksCount()
+    val apksCount = if (apksCountResult.isFailure) {
+      logger.error("getTotalApksCount() returned exception")
 
       sendResponse(
         routingContext,
-        "Error while trying to collect uploaded apks",
+        "Error while trying to get total amount of uploaded apks",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return Result.failure(getUploadedApksResult.exceptionOrNull()!!)
+      return Result.failure(apksCountResult.exceptionOrNull()!!)
     } else {
-      getUploadedApksResult.getOrNull()!!
+      apksCountResult.getOrNull()!!
     }
 
-    if (uploadedApks.isEmpty()) {
+    if (apksCount == 0) {
       val message = "No apks uploaded yet"
       logger.info(message)
 
@@ -49,14 +49,28 @@ class ListApksHandler : AbstractHandler() {
       return null
     }
 
-    val apkNames = uploadedApks.mapNotNull { path ->
-      val fullName = path.split(File.separator).lastOrNull()
-      if (fullName == null) {
-        return@mapNotNull null
-      }
+    val page = calculatePage(routingContext, apksCount)
+    val pageOfApksResult = apksRepository.getApkListPaged(
+      page * COUNT_PER_PAGE_COUNT,
+      COUNT_PER_PAGE_COUNT
+    )
 
-      return@mapNotNull ApkFileName.fromString(fullName)
+    val pageOfApks = if (pageOfApksResult.isFailure) {
+      logger.error("getApkListPaged() returned exception")
+
+      sendResponse(
+        routingContext,
+        "Error while trying to get a page of apks",
+        HttpResponseStatus.INTERNAL_SERVER_ERROR
+      )
+
+      return Result.failure(apksCountResult.exceptionOrNull()!!)
+    } else {
+      pageOfApksResult.getOrNull()!!
     }
+
+    val apkNames = pageOfApks
+      .mapNotNull { apk -> ApkFileName.fromString(apk.apkFullPath) }
 
     if (apkNames.isEmpty()) {
       val message = "No apks left after trying to get apk names"
@@ -88,6 +102,8 @@ class ListApksHandler : AbstractHandler() {
     val apkInfoList = apkNames
       .map { apkName ->
         val fileSize = getFileSize(apkName.getUuid())
+        check(fileSize > 0L) { "File size must be greater than zero" }
+
         return@map ApkInfo(apkName, fileSize)
       }
       .sortedByDescending { apkInfo -> apkInfo.apkFileName.uploadedOn }
@@ -102,10 +118,20 @@ class ListApksHandler : AbstractHandler() {
     return Result.success(Unit)
   }
 
+  private fun calculatePage(routingContext: RoutingContext, apksCount: Int): Int {
+    val pageParam = try {
+      routingContext.pathParam(PAGE_PARAM)?.toInt() ?: 0
+    } catch (error: Throwable) {
+      0
+    }
+
+    return pageParam.coerceIn(0, apksCount / COUNT_PER_PAGE_COUNT)
+  }
+
   private suspend fun getFileSize(apkUuid: String): Long {
-    val findFileResult = fileSystem.findFileAsync(
+    val findFileResult = fileSystem.findApkFileAsync(
       serverSettings.apksDir.absolutePath,
-      Pattern.compile(".*($apkUuid)_(\\d+)\\.apk")
+      apkUuid
     )
 
     if (findFileResult.isFailure) {
@@ -113,18 +139,7 @@ class ListApksHandler : AbstractHandler() {
       return -1
     }
 
-    val foundFiles = findFileResult.getOrNull()!!
-    if (foundFiles.isEmpty()) {
-      logger.info("Couldn't find any files with uuid ${apkUuid}")
-      return -1
-    }
-
-    if (foundFiles.size > 1) {
-      logger.info("Found more than one file with uuid ${apkUuid}, files = ${foundFiles}")
-      return -1
-    }
-
-    val fileSizeResult = fileSystem.getFileSize(foundFiles.first())
+    val fileSizeResult = fileSystem.getFileSize(findFileResult.getOrNull()!!)
     if (fileSizeResult.isSuccess) {
       return fileSizeResult.getOrNull()!!
     }
@@ -213,7 +228,8 @@ class ListApksHandler : AbstractHandler() {
   )
 
   companion object {
-    private val APK_PATTERN = Pattern.compile(".*\\.apk")
+    private const val COUNT_PER_PAGE_COUNT = 100
+    const val PAGE_PARAM = "page"
 
     private val UPLOAD_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
       .append(ISODateTimeFormat.date())

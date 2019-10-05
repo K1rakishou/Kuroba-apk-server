@@ -3,22 +3,28 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import data.Apk
+import data.ApkFileName
 import data.Commit
 import extensions.toHex
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
+import org.joda.time.DateTime
 import org.koin.core.inject
 import persister.ApkPersister
 import persister.CommitPersister
+import repository.ApkRepository
 import repository.CommitRepository
 import repository.NoNewCommitsLeftAfterFiltering
 import service.FileHeaderChecker
+import java.nio.file.Paths
 
-class UploadHandler : AbstractHandler() {
+open class UploadHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(UploadHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
+  private val apksRepository by inject<ApkRepository>()
   private val fileHeaderChecker by inject<FileHeaderChecker>()
   private val commitPersister by inject<CommitPersister>()
   private val apkPersister by inject<ApkPersister>()
@@ -168,15 +174,36 @@ class UploadHandler : AbstractHandler() {
     }
 
     val commits = insertCommitsResult.getOrNull()!!
+    var apk: Apk? = null
 
     try {
+      val headCommit = checkNotNull(commits.firstOrNull { commit -> commit.head }) {
+        "Inserted commits do not have the head commit"
+      }
+
+      val now = DateTime.now()
+      val fileName = ApkFileName.formatFileName(
+        apkVersion,
+        headCommit.commitHash,
+        now
+      )
+
+      val fullPath = Paths.get(serverSettings.apksDir.absolutePath, fileName).toFile().absolutePath
+      apk = Apk(headCommit.apkUuid, fullPath, now)
+
+      val insertApkResult = apksRepository.insertApks(listOf(apk))
+      if (insertApkResult.isFailure) {
+        logger.error("Couldn't insert new apk into apk repository")
+        throw insertApkResult.exceptionOrNull()!!
+      }
+
       val storeCommitsResult = commitPersister.store(apkVersion, commits)
       if (storeCommitsResult.isFailure) {
         logger.error("Couldn't persist commits on the disk")
         throw storeCommitsResult.exceptionOrNull()!!
       }
 
-      val storeApkResult = apkPersister.store(apkFile, apkVersion, commits)
+      val storeApkResult = apkPersister.store(apkFile, apkVersion, commits, now)
       if (storeApkResult.isFailure) {
         logger.error("Couldn't persist apk on the disk")
         throw storeApkResult.exceptionOrNull()!!
@@ -190,8 +217,18 @@ class UploadHandler : AbstractHandler() {
       run {
         val result = commitsRepository.removeCommits(commits)
         if (result.isFailure) {
-          throw RuntimeException("Couldn't remove inserted commits after unknown error during inserting",
+          throw RuntimeException("Couldn't remove inserted commits after unknown error during storing",
             result.exceptionOrNull()!!)
+        }
+      }
+
+      run {
+        apk?.let {
+          val result = apksRepository.removeApk(it)
+          if (result.isFailure) {
+            throw RuntimeException("Couldn't remove inserted apk after unknown error during storing",
+              result.exceptionOrNull()!!)
+          }
         }
       }
 
@@ -233,7 +270,7 @@ class UploadHandler : AbstractHandler() {
       return Result.failure(readResult.exceptionOrNull()!!)
     }
 
-    val insertResult = commitsRepository.insertNewCommits(apkVersion, readResult.getOrNull()!!)
+    val insertResult = commitsRepository.insertCommits(apkVersion, readResult.getOrNull()!!)
     if (insertResult.isFailure) {
       logger.error("Couldn't store new commits into the database")
       return Result.failure(insertResult.exceptionOrNull()!!)

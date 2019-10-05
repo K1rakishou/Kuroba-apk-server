@@ -1,4 +1,5 @@
-import db.table.CommitTable
+import db.ApkTable
+import db.CommitTable
 import di.MainModule
 import io.vertx.core.Vertx
 import org.jetbrains.exposed.sql.Database
@@ -42,6 +43,7 @@ private fun initDatabase(): Database {
 
     transaction(database) {
       SchemaUtils.create(CommitTable)
+      SchemaUtils.create(ApkTable)
     }
 
     println("Done")

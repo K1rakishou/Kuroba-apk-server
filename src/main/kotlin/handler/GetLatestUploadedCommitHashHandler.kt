@@ -6,7 +6,7 @@ import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
 import repository.CommitRepository
 
-class GetLatestUploadedCommitHashHandler : AbstractHandler() {
+open class GetLatestUploadedCommitHashHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetLatestUploadedCommitHashHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
 

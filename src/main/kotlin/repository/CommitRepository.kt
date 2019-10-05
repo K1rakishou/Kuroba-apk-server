@@ -2,17 +2,21 @@ package repository
 
 import data.ApkFileName
 import data.Commit
-import db.table.CommitTable
+import db.CommitTable
+import extensions.selectFilterDuplicates
 import io.vertx.core.logging.LoggerFactory
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import org.jetbrains.exposed.sql.*
 import org.koin.core.inject
 import parser.CommitParser
 
-class CommitRepository : BaseRepository() {
+open class CommitRepository : BaseRepository() {
   private val logger = LoggerFactory.getLogger(CommitRepository::class.java)
   private val commitParser by inject<CommitParser>()
 
-  suspend fun insertNewCommits(apkVersion: Long, latestCommits: String): Result<List<Commit>> {
+  suspend fun insertCommits(apkVersion: Long, latestCommits: String): Result<List<Commit>> {
     if (latestCommits.isEmpty()) {
       return Result.failure(IllegalArgumentException("latestCommits is empty"))
     }
@@ -34,7 +38,7 @@ class CommitRepository : BaseRepository() {
       return Result.failure(insertResult.exceptionOrNull()!!)
     }
 
-    return Result.success(parsedCommits)
+    return Result.success(insertResult.getOrNull()!!)
   }
 
   private fun validateCommits(parsedCommits: List<Commit>): Boolean {
@@ -73,44 +77,46 @@ class CommitRepository : BaseRepository() {
     }
   }
 
-  private suspend fun insertCommits(commits: List<Commit>): Result<Unit> {
-    require(commits.isNotEmpty())
+  private suspend fun insertCommits(commits: List<Commit>): Result<List<Commit>> {
+    require(commits.isNotEmpty()) { "insertCommits() commits must not be empty" }
+
+    val headCommitsCount = commits
+      .filter { it.head }
+      .distinctBy { commit -> commit.apkUuid }.size
+
+    require(headCommitsCount == 1) {
+      "There are at least two commits that have different apkUuids"
+    }
 
     return dbWrite {
+      // TODO: make this chunked
       val apkVersions = commits.map { commit -> commit.apkVersion }
       val hashes = commits.map { commit -> commit.commitHash }
-      val groupUuid = commits.first().apkUuid
+      val groupUuid = checkNotNull(commits.firstOrNull { commit -> commit.head }?.apkUuid) {
+        "Commits group does not have the head commit"
+      }
 
-      val alreadyInserted = CommitTable.select {
+      val filtered = CommitTable.selectFilterDuplicates(commits, {
         CommitTable.apkVersion.inList(apkVersions) and
           CommitTable.hash.inList(hashes)
-      }
-        .map { resultRow -> Commit.fromResultRow(resultRow) }
-        .toSet()
+      }, { resultRow ->
+        Commit.fromResultRow(resultRow)
+      })
 
-      val filtered = commits.filter { commit ->
-        !alreadyInserted.contains(commit)
-      }
-
-      if (filtered.isEmpty()) {
-        throw NoNewCommitsLeftAfterFiltering(commits)
-      }
-
-      CommitTable.batchInsert(filtered) { commit ->
+      return@dbWrite CommitTable.batchInsert(filtered) { commit ->
         this[CommitTable.uuid] = commit.apkUuid
         this[CommitTable.groupUuid] = groupUuid
         this[CommitTable.hash] = commit.commitHash
         this[CommitTable.apkVersion] = commit.apkVersion
         this[CommitTable.committedAt] = commit.committedAt
         this[CommitTable.description] = commit.description
-      }
-
-      return@dbWrite
+        this[CommitTable.head] = commit.head
+      }.map { resultRow -> Commit.fromResultRow(resultRow) }
     }
   }
 
   suspend fun removeCommits(commits: List<Commit>): Result<Unit> {
-    require(commits.isNotEmpty())
+    require(commits.isNotEmpty()) { "removeCommits() commits must not be empty" }
 
     return dbWrite {
       val apkVersions = commits.map { commit -> commit.apkVersion }
@@ -139,9 +145,34 @@ class CommitRepository : BaseRepository() {
     }
   }
 
+  @ExperimentalCoroutinesApi
+  suspend fun getAllCommitsStream(): Flow<List<Commit>> {
+    return channelFlow {
+      val result = dbRead {
+        CommitTable.selectAll()
+          .chunked(COMMITS_CHUNK_SIZE)
+          .forEach { resultRowList ->
+            val commits = resultRowList.map { resultRow -> Commit.fromResultRow(resultRow) }
+            if (commits.isNotEmpty()) {
+              send(commits)
+            }
+          }
+      }
+
+      if (result.isFailure) {
+        throw result.exceptionOrNull()!!
+      }
+    }
+  }
+
+  companion object {
+    private const val COMMITS_CHUNK_SIZE = 512
+  }
 }
 
 class CommitsParseException : Exception("Couldn't parse commits, resulted in empty parsed data")
 class CommitValidationException : Exception("One of the parsed commits is not valid")
-class NoNewCommitsLeftAfterFiltering(commits: List<Commit>) : Exception("No new commits left after filtering, commits = ${commits}")
+class NoNewCommitsLeftAfterFiltering(commits: List<Commit>) :
+  Exception("No new commits left after filtering, commits = ${commits}")
+
 class CommitUuidIsBlank : Exception("Commit uuid is blank")

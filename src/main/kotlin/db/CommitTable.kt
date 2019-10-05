@@ -1,4 +1,4 @@
-package db.table
+package db
 
 import data.Commit
 import org.jetbrains.exposed.sql.Table
@@ -10,6 +10,7 @@ object CommitTable : Table("commit_table") {
   val apkVersion = long(Field.APK_VERSION).index(Index.APK_VERSION)
   val committedAt = datetime(Field.COMMITTED_AT).index(Index.COMMITTED_AT)
   val description = varchar(Field.COMMIT_DESCRIPTION, Commit.MAX_DESCRIPTION_LENGTH)
+  val head = bool(Field.HEAD)
 
   object Field {
     const val UUID = "commit_uuid"
@@ -18,6 +19,7 @@ object CommitTable : Table("commit_table") {
     const val APK_VERSION = "apk_version"
     const val COMMITTED_AT = "committed_at"
     const val COMMIT_DESCRIPTION = "commit_description"
+    const val HEAD = "head"
   }
 
   object Index {

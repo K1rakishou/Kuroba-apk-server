@@ -1,6 +1,6 @@
 package data
 
-import db.table.CommitTable
+import db.CommitTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormatterBuilder
@@ -11,12 +11,21 @@ data class Commit(
   val apkVersion: Long,
   val commitHash: String,
   val committedAt: DateTime,
-  val description: String
+  val description: String,
+  val head: Boolean
 ) {
-  val apkUuid = String.format("%d_%s", apkVersion, commitHash)
 
-  fun asString(): String {
-    return String.format("%s; %s; %s", commitHash, COMMIT_DATE_TIME_PRINTER.print(committedAt), description)
+  val apkUuid by lazy {
+    String.format("%d_%s", apkVersion, commitHash)
+  }
+
+  fun serializeToString(): String {
+    return String.format(
+      "%s; %s; %s",
+      commitHash,
+      COMMIT_DATE_TIME_PRINTER.print(committedAt),
+      description
+    )
   }
 
   fun validate(): Boolean {
@@ -55,6 +64,15 @@ data class Commit(
       commitHash.hashCode()
   }
 
+  override fun toString(): String {
+    return String.format(
+      "commitHash = %s, committedAt = %s, description = %s",
+      commitHash,
+      COMMIT_DATE_TIME_PRINTER.print(committedAt),
+      description
+    )
+  }
+
   companion object {
     const val MAX_DESCRIPTION_LENGTH = 1024
     const val MAX_UUID_LENGTH = 96
@@ -73,7 +91,8 @@ data class Commit(
         resultRow[CommitTable.apkVersion],
         resultRow[CommitTable.hash],
         resultRow[CommitTable.committedAt],
-        resultRow[CommitTable.description]
+        resultRow[CommitTable.description],
+        resultRow[CommitTable.head]
       )
     }
   }

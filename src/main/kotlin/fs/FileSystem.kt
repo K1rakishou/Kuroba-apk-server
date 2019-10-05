@@ -9,7 +9,7 @@ import java.util.regex.Pattern
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class FileSystem : KoinComponent {
+open class FileSystem : KoinComponent {
   private val vertx by inject<Vertx>()
 
   suspend fun createFile(path: String): Result<Unit> {
@@ -69,9 +69,32 @@ class FileSystem : KoinComponent {
     }
   }
 
-  suspend fun findFileAsync(path: String, filter: Pattern): Result<List<String>> {
+  suspend fun findApkFileAsync(apksDir: String, apkUuid: String): Result<String?> {
+    val findFileResult = findFileAsync(
+      apksDir,
+      String.format(APK_NAME_REGEX_FORMAT, apkUuid)
+    )
+
+    if (findFileResult.isFailure) {
+      return Result.failure(findFileResult.exceptionOrNull()!!)
+    }
+
+    val foundFiles = findFileResult.getOrNull()!!
+    if (foundFiles.isEmpty()) {
+      // Does not exist
+      return Result.success(null)
+    }
+
+    if (foundFiles.size > 1) {
+      throw RuntimeException("Found more than one file with the same apk uuid: $foundFiles")
+    }
+
+    return Result.success(foundFiles.first())
+  }
+
+  suspend fun findFileAsync(path: String, filterRegEx: String): Result<List<String>> {
     return suspendCoroutine { continuation ->
-      vertx.fileSystem().readDir(path, filter.pattern()) { asyncResult ->
+      vertx.fileSystem().readDir(path, filterRegEx) { asyncResult ->
         if (asyncResult.succeeded()) {
           continuation.resume(Result.success(asyncResult.result()))
         } else {
@@ -171,4 +194,11 @@ class FileSystem : KoinComponent {
       }
     }
   }
+
+  companion object {
+    private const val APK_NAME_REGEX_FORMAT = ".*(%s)_(\\d+)\\.apk"
+  }
 }
+
+class FileNotFoundException(apksDir: String, fileName: String)
+  : Exception("File ${fileName} not found in directory ${apksDir}")

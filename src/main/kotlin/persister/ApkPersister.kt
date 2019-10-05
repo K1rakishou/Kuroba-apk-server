@@ -11,7 +11,6 @@ import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import java.nio.file.Paths
-import java.util.regex.Pattern
 
 open class ApkPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(ApkPersister::class.java)
@@ -19,17 +18,17 @@ open class ApkPersister : KoinComponent {
   private val fileSystem by inject<FileSystem>()
   private val serverSettings by inject<ServerSettings>()
 
-  open suspend fun store(
+  suspend fun store(
     apkFile: FileUpload,
     apkVersion: Long,
-    parsedCommits: List<Commit>
+    parsedCommits: List<Commit>,
+    date: DateTime
   ): Result<Unit> {
-    require(parsedCommits.isNotEmpty())
+    require(parsedCommits.isNotEmpty()) { "store() parsed commits must not be empty" }
 
-    val now = DateTime.now()
     val apkSize = apkFile.size()
     val latestCommit = parsedCommits.first()
-    val getFullPathResult = getFullPath(apkVersion, latestCommit, now)
+    val getFullPathResult = getFullPath(apkVersion, latestCommit, date)
 
     if (getFullPathResult.isFailure) {
       return Result.failure(getFullPathResult.exceptionOrNull()!!)
@@ -66,34 +65,26 @@ open class ApkPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
-    require(parsedCommits.isNotEmpty())
+  suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+    require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()
-    val apkUuid = ApkFileName.getUuid(apkVersion, latestCommit.commitHash)
+    val apkUuid = ApkFileName.getUuid(
+      apkVersion,
+      latestCommit.commitHash
+    )
 
-    val findFileResult = fileSystem.findFileAsync(
+    val findFileResult = fileSystem.findApkFileAsync(
       serverSettings.apksDir.absolutePath,
-      Pattern.compile(".*($apkUuid)_(\\d+)\\.apk"))
+      apkUuid
+    )
 
     if (findFileResult.isFailure) {
       logger.error("findFileAsync() returned exception")
       return Result.failure(findFileResult.exceptionOrNull()!!)
     }
 
-    val foundFiles = findFileResult.getOrNull()!!
-    if (foundFiles.isEmpty()) {
-      logger.info("No files were found with uuid ${apkUuid}, nothing to remove")
-      return Result.success(Unit)
-    }
-
-    if (foundFiles.size > 1) {
-      val message = "More than one file was found with uuid ${apkUuid}, count = ${foundFiles.size}"
-      logger.error(message)
-      return Result.failure(MoreThanOneFileWithTheSameUuidFound(apkUuid, foundFiles.size))
-    }
-
-    return fileSystem.removeFileAsync(foundFiles.first())
+    return fileSystem.removeFileAsync(findFileResult.getOrNull()!!)
   }
 
   private fun getFullPath(apkVersion: Long, latestCommit: Commit, now: DateTime): Result<String> {

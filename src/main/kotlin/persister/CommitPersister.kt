@@ -18,8 +18,8 @@ open class CommitPersister : KoinComponent {
   private val serverSettings by inject<ServerSettings>()
   private val fileSystem by inject<FileSystem>()
 
-  open suspend fun store(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
-    require(parsedCommits.isNotEmpty())
+  suspend fun store(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+    require(parsedCommits.isNotEmpty()) { "store() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()
     val getFullPathResult = getFullPath(apkVersion, latestCommit)
@@ -62,8 +62,8 @@ open class CommitPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
-    require(parsedCommits.isNotEmpty())
+  suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+    require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()
     val getFullPathResult = getFullPath(apkVersion, latestCommit)

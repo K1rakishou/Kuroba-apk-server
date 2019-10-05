@@ -2,7 +2,7 @@ package parser
 
 import data.Commit
 import org.joda.time.DateTime
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
 class CommitParserTest {
@@ -46,7 +46,9 @@ class CommitParserTest {
       DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[0].committedAt
     )
+
     assertEquals("trigger CI build good", commits[0].description)
+    assertTrue(commits[0].head)
   }
 
   @Test
@@ -117,6 +119,14 @@ class CommitParserTest {
     assertEquals("trigger CI build 8", commits[7].description)
     assertEquals("trigger CI build 9", commits[8].description)
     assertEquals("trigger CI build 10", commits[9].description)
+
+    assertTrue(commits[0].head)
+    assertFalse(commits[1].head)
+    assertFalse(commits[2].head)
+    assertFalse(commits[3].head)
+    assertFalse(commits[4].head)
+    assertFalse(commits[5].head)
+    assertFalse(commits[6].head)
   }
 
   @Test

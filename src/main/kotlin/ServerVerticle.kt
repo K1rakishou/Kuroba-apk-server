@@ -2,6 +2,7 @@ import dispatchers.DispatcherProvider
 import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
+import io.vertx.core.http.HttpMethod
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
@@ -61,6 +62,9 @@ class ServerVerticle : CoroutineVerticle(), KoinComponent {
         handle(routingContext) { viewCommitsHandler.handle(routingContext) }
       }
       get("/").handler { routingContext ->
+        routingContext.reroute(HttpMethod.GET, "/apks/0")
+      }
+      get("/apks/:${ListApksHandler.PAGE_PARAM}").handler { routingContext ->
         handle(routingContext) { listApksHandler.handle(routingContext) }
       }
     }

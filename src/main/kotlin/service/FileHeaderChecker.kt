@@ -1,6 +1,6 @@
 package service
 
-class FileHeaderChecker {
+open class FileHeaderChecker {
   private val allowedApkHeaders = listOf(
     byteArrayOf(0x50, 0x4B)
   )

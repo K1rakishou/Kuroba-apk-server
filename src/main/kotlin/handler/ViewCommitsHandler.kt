@@ -10,7 +10,7 @@ import kotlinx.html.stream.appendHTML
 import org.koin.core.inject
 import repository.CommitRepository
 
-class ViewCommitsHandler : AbstractHandler() {
+open class ViewCommitsHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ViewCommitsHandler::class.java)
 
   private val commitRepository by inject<CommitRepository>()
@@ -99,7 +99,7 @@ class ViewCommitsHandler : AbstractHandler() {
     ul("list-style-type:disc;") {
       for (commit in commits) {
         li {
-          +commit.asString()
+          +commit.serializeToString()
         }
       }
     }

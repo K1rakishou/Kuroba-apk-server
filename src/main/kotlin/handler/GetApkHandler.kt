@@ -4,9 +4,8 @@ import data.ApkFileName
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
-import java.util.regex.Pattern
 
-class GetApkHandler : AbstractHandler() {
+open class GetApkHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
@@ -40,17 +39,13 @@ class GetApkHandler : AbstractHandler() {
       return null
     }
 
-    val findFileResult = fileSystem.findFileAsync(
-      serverSettings.apksDir.absolutePath,
-      Pattern.compile(".*($apkUuid)_(\\d+)\\.apk")
-    )
-
-    val foundFiles = if (findFileResult.isFailure) {
-      logger.error("findFileAsync() returned exception")
+    val findFileResult = fileSystem.findApkFileAsync(serverSettings.apksDir.absolutePath, apkUuid)
+    val apkPath = if (findFileResult.isFailure) {
+      logger.error("findApkFileAsync() returned exception")
 
       sendResponse(
         routingContext,
-        "Error while trying to figure out whether a file exists",
+        "Error while trying to find a file ${apkUuid}",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
@@ -59,25 +54,7 @@ class GetApkHandler : AbstractHandler() {
       findFileResult.getOrNull()!!
     }
 
-    if (foundFiles.isEmpty()) {
-      logger.error("File with uuid $apkUuid does not exist")
-
-      sendResponse(
-        routingContext,
-        "File does not exist",
-        HttpResponseStatus.NOT_FOUND
-      )
-
-      return null
-    }
-
-    if (foundFiles.size > 1) {
-      throw RuntimeException("Found more than one file with the same apk uuid: $foundFiles")
-    }
-
-    val apkPath = foundFiles.first()
     val apkFileName = ApkFileName.fromString(apkPath)
-
     val readFileResult = fileSystem.readFileAsync(apkPath)
     if (readFileResult.isFailure) {
       logger.error("Error while reading file from the disk ")

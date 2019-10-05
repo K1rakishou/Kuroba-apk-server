@@ -11,6 +11,7 @@ open class MainInitializer : KoinComponent {
   private val logger = LoggerFactory.getLogger(MainInitializer::class.java)
 
   private val commitRepositoryInitializer by inject<CommitRepositoryInitializer>()
+  private val apkRepositoryInitializer by inject<ApkRepositoryInitializer>()
   private val dispatcherProvider by inject<DispatcherProvider>()
 
   open suspend fun initEverything(): Boolean {
@@ -21,6 +22,12 @@ open class MainInitializer : KoinComponent {
         val commitsRepoInitResult = commitRepositoryInitializer.init()
         if (commitsRepoInitResult.isFailure) {
           logger.error("Couldn't init commits repo", commitsRepoInitResult.exceptionOrNull()!!)
+          return@withContext false
+        }
+
+        val apkRepoInitResult = apkRepositoryInitializer.init()
+        if (apkRepoInitResult.isFailure) {
+          logger.error("Couldn't init apks repo", apkRepoInitResult.exceptionOrNull()!!)
           return@withContext false
         }
       }

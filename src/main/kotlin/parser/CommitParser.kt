@@ -3,9 +3,10 @@ package parser
 import data.Commit
 import io.vertx.core.logging.LoggerFactory
 import org.joda.time.DateTime
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
 
-class CommitParser {
+open class CommitParser {
   private val logger = LoggerFactory.getLogger(CommitParser::class.java)
   private val regex = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
 
@@ -15,6 +16,8 @@ class CommitParser {
       logger.error("Couldn't split commits into separate lines")
       return emptyList()
     }
+
+    val isFirstCommit = AtomicBoolean(false)
 
     val parsedCommits = split.mapNotNull { sp ->
       val matcher = regex.matcher(sp)
@@ -46,7 +49,17 @@ class CommitParser {
         apkVersion,
         hash,
         parsedTime,
-        description)
+        description,
+        isFirstCommit.compareAndSet(false, true)
+      )
+    }
+
+    val headCommitsCount = parsedCommits
+      .filter { it.head }
+      .distinctBy { commit -> commit.apkUuid }.size
+
+    check(headCommitsCount == 1) {
+      "There are at least two commits that have different apkUuids"
     }
 
     // First element should contain the latest commit
@@ -54,8 +67,6 @@ class CommitParser {
   }
 
   fun commitsToString(parsedCommits: List<Commit>): String {
-    return parsedCommits.joinToString(separator = "\n") { commit ->
-      commit.asString()
-    }
+    return parsedCommits.joinToString(separator = "\n") { commit -> commit.serializeToString() }
   }
 }

@@ -3,8 +3,12 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import com.nhaarman.mockitokotlin2.doReturn
+import data.ApkFileName
 import data.Commit
-import db.table.CommitTable
+import data.CommitFileName
+import db.ApkTable
+import db.CommitTable
 import handler.UploadHandler.Companion.APK_FILE_NAME
 import handler.UploadHandler.Companion.COMMITS_FILE_NAME
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -16,6 +20,7 @@ import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.ext.web.multipart.MultipartForm
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.selectAll
@@ -32,7 +37,7 @@ import java.nio.file.Paths
 
 
 @ExtendWith(VertxExtension::class)
-class UploadHandlerTest {
+class UploadHandlerTest : AbstractHandlerTest() {
   private val APK_MIME_TYPE = "application/vnd.android.package-archive"
   private val COMMITS_MIME_TYPE = "text/plain"
 
@@ -51,6 +56,7 @@ class UploadHandlerTest {
   fun destroy() {
     transaction(database) {
       SchemaUtils.drop(CommitTable)
+      SchemaUtils.drop(ApkTable)
     }
   }
 
@@ -61,6 +67,7 @@ class UploadHandlerTest {
 
       transaction(database) {
         SchemaUtils.create(CommitTable)
+        SchemaUtils.create(ApkTable)
       }
 
       println("Done")
@@ -108,17 +115,12 @@ class UploadHandlerTest {
     testContext: VertxTestContext,
     headers: MultiMap = goodHeaders,
     form: MultipartForm = goodFiles,
+    mocks: suspend () -> Unit,
     func: (HttpResponse<String>) -> Unit
   ) {
     startKoin {
-      val testModule = TestModule(
-        vertx,
-        initDatabase(),
-        "http://127.0.0.1:8080",
-        File("src/test/resources"),
-        "test_key")
-
-      modules(testModule.createTestModule())
+      modules(getModule(vertx, database))
+      runBlocking { mocks() }
     }
 
     vertx.deployVerticle(ServerVerticle(), testContext.succeeding { id ->
@@ -140,6 +142,8 @@ class UploadHandlerTest {
                 testContext.completeNow()
               } catch (error: Throwable) {
                 testContext.failNow(error)
+              } finally {
+                serverSettings.apksDir.listFiles()!!.forEach { file -> file.delete() }
               }
             } finally {
               stopKoin()
@@ -151,10 +155,12 @@ class UploadHandlerTest {
 
   @Test
   fun `test without any parameters`(vertx: Vertx, testContext: VertxTestContext) {
-    uploadHandlerTestFunc(vertx, testContext, headersOf(), multipartFormOf()) { response ->
+    uploadHandlerTestFunc(vertx, testContext, headersOf(), multipartFormOf(), {
+      doReturn(true).`when`(mainInitializer).initEverything()
+    }, { response ->
       assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
       assertEquals("No apk version provided", response.body())
-    }
+    })
   }
 
   @Test
@@ -163,11 +169,12 @@ class UploadHandlerTest {
       vertx,
       testContext,
       headersOf(Pair(APK_VERSION_HEADER_NAME, "abc")),
-      multipartFormOf()
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("Apk version must be numeric", response.body())
-    }
+      multipartFormOf(), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals("Apk version must be numeric", response.body())
+      })
   }
 
   @Test
@@ -179,11 +186,12 @@ class UploadHandlerTest {
         Pair(APK_VERSION_HEADER_NAME, "112233"),
         Pair(SECRET_KEY_HEADER_NAME, "")
       ),
-      multipartFormOf()
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("Secret key is bad", response.body())
-    }
+      multipartFormOf(), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals("Secret key is bad", response.body())
+      })
   }
 
   @Test
@@ -194,11 +202,12 @@ class UploadHandlerTest {
       goodHeaders,
       multipartFormOf(
         Triple(APK_FILE_NAME, badApk, APK_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
-    }
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
+      })
   }
 
   @Test
@@ -209,11 +218,12 @@ class UploadHandlerTest {
       goodHeaders,
       multipartFormOf(
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
-    }
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
+      })
   }
 
   @Test
@@ -225,11 +235,15 @@ class UploadHandlerTest {
       multipartFormOf(
         Triple("test", badApk, APK_MIME_TYPE),
         Triple("test2", goodCommits, COMMITS_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("One of the multipart parameters is not present: apkFile: false, commitsFile: false", response.body())
-    }
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals(
+          "One of the multipart parameters is not present: apkFile: false, commitsFile: false",
+          response.body()
+        )
+      })
   }
 
   @Test
@@ -241,11 +255,15 @@ class UploadHandlerTest {
       multipartFormOf(
         Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
         Triple("test2", goodCommits, COMMITS_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("One of the multipart parameters is not present: apkFile: true, commitsFile: false", response.body())
-    }
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals(
+          "One of the multipart parameters is not present: apkFile: true, commitsFile: false",
+          response.body()
+        )
+      })
   }
 
   @Test
@@ -257,11 +275,15 @@ class UploadHandlerTest {
       multipartFormOf(
         Triple("test", goodApk, APK_MIME_TYPE),
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
-      assertEquals("One of the multipart parameters is not present: apkFile: false, commitsFile: true", response.body())
-    }
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
+        assertEquals(
+          "One of the multipart parameters is not present: apkFile: false, commitsFile: true",
+          response.body()
+        )
+      })
   }
 
   @Test
@@ -273,21 +295,44 @@ class UploadHandlerTest {
       multipartFormOf(
         Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
-      )
-    ) { response ->
-      assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+      }, { response ->
+        assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
 
-      transaction(database) {
-        val commits = CommitTable.selectAll()
-          .map { resultRow -> Commit.fromResultRow(resultRow) }
+        transaction(database) {
+          val commits = CommitTable.selectAll()
+            .map { resultRow -> Commit.fromResultRow(resultRow) }
 
-        assertEquals(5, commits.size)
-        assertEquals(112233, commits.first().apkVersion)
-        assertEquals("112233_8acb72611099915c81998776641606b1b47db583", commits.first().apkUuid)
-        assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
-        assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
-      }
-    }
+          assertEquals(5, commits.size)
+          assertEquals(112233, commits.first().apkVersion)
+          assertEquals("112233_8acb72611099915c81998776641606b1b47db583", commits.first().apkUuid)
+          assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
+          assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
+        }
+
+        val resultFiles = serverSettings.apksDir.listFiles()!!
+        assertEquals(2, resultFiles.size)
+
+        val apkFile = checkNotNull(resultFiles.firstOrNull { it.name.endsWith(".apk") })
+        val commitsFile = checkNotNull(resultFiles.firstOrNull { it.name.endsWith("_commits.txt") })
+
+        val apkFileName = checkNotNull(ApkFileName.fromString(apkFile.absolutePath))
+        assertEquals(112233, apkFileName.apkVersion)
+        assertEquals("8acb72611099915c81998776641606b1b47db583", apkFileName.commitHash)
+
+        val commitFileName = checkNotNull(CommitFileName.fromString(commitsFile.absolutePath))
+        assertEquals(112233, commitFileName.apkVersion)
+        assertEquals("8acb72611099915c81998776641606b1b47db583", commitFileName.commitHash)
+
+        val contents = commitsFile.readText()
+        val parsedCommits = commitParser.parseCommits(112233, contents)
+        assertEquals(5, parsedCommits.size)
+
+        assertEquals("112233_8acb72611099915c81998776641606b1b47db583", parsedCommits.first().apkUuid)
+        assertEquals("8acb72611099915c81998776641606b1b47db583", parsedCommits.first().commitHash)
+        assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", parsedCommits.first().description)
+      })
   }
 
 }
