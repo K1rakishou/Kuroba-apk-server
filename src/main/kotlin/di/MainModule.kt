@@ -18,6 +18,7 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import service.FileHeaderChecker
+import util.TimeUtils
 import java.io.File
 
 class MainModule(
@@ -36,6 +37,8 @@ class MainModule(
       single { CommitRepositoryInitializer() }
       single { ApkRepositoryInitializer() }
       single { MainInitializer() }
+
+      single { TimeUtils() }
 
       single {
         ServerSettings(

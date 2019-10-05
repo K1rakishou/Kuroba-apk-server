@@ -18,9 +18,11 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import service.FileHeaderChecker
+import util.TimeUtils
 import java.io.File
 
 abstract class AbstractHandlerTest {
+  protected lateinit var timeUtils: TimeUtils
   protected lateinit var mainInitializer: MainInitializer
   protected lateinit var commitRepositoryInitializer: CommitRepositoryInitializer
   protected lateinit var apkRepositoryInitializer: ApkRepositoryInitializer
@@ -39,6 +41,7 @@ abstract class AbstractHandlerTest {
   protected lateinit var viewCommitsHandler: ViewCommitsHandler
 
   protected fun getModule(vertx: Vertx, database: Database): Module = module {
+    timeUtils = Mockito.spy(TimeUtils())
     mainInitializer = Mockito.spy(MainInitializer())
     commitRepositoryInitializer = Mockito.spy(CommitRepositoryInitializer())
     apkRepositoryInitializer = Mockito.spy(ApkRepositoryInitializer())
@@ -57,6 +60,7 @@ abstract class AbstractHandlerTest {
     getLatestUploadedCommitHashHandler = Mockito.spy(GetLatestUploadedCommitHashHandler())
     viewCommitsHandler = Mockito.spy(ViewCommitsHandler())
 
+    single { timeUtils }
     single { vertx }
     single<DispatcherProvider> { TestDispatcherProvider() }
     single { mainInitializer }

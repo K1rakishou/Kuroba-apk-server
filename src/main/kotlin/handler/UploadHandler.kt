@@ -11,7 +11,6 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
-import org.joda.time.DateTime
 import org.koin.core.inject
 import persister.ApkPersister
 import persister.CommitPersister
@@ -19,6 +18,7 @@ import repository.ApkRepository
 import repository.CommitRepository
 import repository.NoNewCommitsLeftAfterFiltering
 import service.FileHeaderChecker
+import util.TimeUtils
 import java.nio.file.Paths
 
 open class UploadHandler : AbstractHandler() {
@@ -28,6 +28,7 @@ open class UploadHandler : AbstractHandler() {
   private val fileHeaderChecker by inject<FileHeaderChecker>()
   private val commitPersister by inject<CommitPersister>()
   private val apkPersister by inject<ApkPersister>()
+  private val timeUtils by inject<TimeUtils>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
@@ -181,7 +182,7 @@ open class UploadHandler : AbstractHandler() {
         "Inserted commits do not have the head commit"
       }
 
-      val now = DateTime.now()
+      val now = timeUtils.now()
       val fileName = ApkFileName.formatFileName(
         apkVersion,
         headCommit.commitHash,

@@ -4,6 +4,7 @@ import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import com.nhaarman.mockitokotlin2.doReturn
+import data.Apk
 import data.ApkFileName
 import data.Commit
 import data.CommitFileName
@@ -25,6 +26,7 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.DateTime
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -297,6 +299,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(DateTime(1570287894192)).`when`(timeUtils).now()
       }, { response ->
         assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
 
@@ -309,6 +312,17 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals("112233_8acb72611099915c81998776641606b1b47db583", commits.first().apkUuid)
           assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
           assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
+          assertEquals(Commit.COMMIT_DATE_TIME_PRINTER.parseDateTime("2019-09-19T14:52:49+00:00"), commits.first().committedAt)
+
+          val apks = ApkTable.selectAll()
+            .map { resultRow -> Apk.fromResultRow(resultRow) }
+
+          assertEquals(1, apks.size)
+
+          assertEquals("112233_8acb72611099915c81998776641606b1b47db583", apks.first().apkUuid)
+          assertEquals("F:\\projects\\java\\current\\kuroba-server\\src\\test\\resources\\test_dump\\" +
+            "112233_8acb72611099915c81998776641606b1b47db583_1570287894192", apks.first().apkFullPath)
+          assertEquals(1570287894192, apks.first().uploadedOn.millis)
         }
 
         val resultFiles = serverSettings.apksDir.listFiles()!!
