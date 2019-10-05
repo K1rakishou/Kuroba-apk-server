@@ -490,6 +490,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
 
   @Test
   fun `test many uploaded apks multithreaded`(vertx: Vertx, testContext: VertxTestContext) {
+    val count = 500
+
     startKoin {
       modules(getModule(vertx, database))
     }
@@ -502,7 +504,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
     fun generateApksWithCommits(): List<Pair<MultipartForm, MultiMap>> {
       val result = mutableListOf<Pair<MultipartForm, MultiMap>>()
 
-      for (i in 0 until 100) {
+      for (i in 0 until count) {
         val apkFile = File(dir, "${i}.apk")
         apkFile.writeText(String(byteArrayOf(0x50, 0x4B)) + "${i}")
 
@@ -589,17 +591,17 @@ class UploadHandlerTest : AbstractHandlerTest() {
         }, { response ->
           assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
         }, {
-          assertEquals(100, commitsRepository.getCommitsCount().getOrNull()!!)
-          assertEquals(100, apksRepository.getTotalApksCount().getOrNull()!!)
+          assertEquals(count, commitsRepository.getCommitsCount().getOrNull()!!)
+          assertEquals(count, apksRepository.getTotalApksCount().getOrNull()!!)
 
           val allFiles = dir.listFiles()!!
-          assertEquals(200, allFiles.size)
+          assertEquals(count * 2, allFiles.size)
 
           val apks = allFiles.filter { file -> file.name.endsWith(".apk") }
-          assertEquals(100, apks.size)
+          assertEquals(count, apks.size)
 
           val commits = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
-          assertEquals(100, commits.size)
+          assertEquals(count, commits.size)
 
           serverSettings.apksDir.listFiles()!!.forEach { file ->
             if (file.isFile) {

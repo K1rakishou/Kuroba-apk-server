@@ -2,6 +2,7 @@ package handler
 
 import data.ApkFileName
 import data.Commit
+import extensions.getResourceFile
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
@@ -17,6 +18,7 @@ open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
   private val apksRepository by inject<ApkRepository>()
+  private val indexPageCss by lazy { getResourceFile("index.css").readText() }
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")
@@ -108,7 +110,7 @@ open class ListApksHandler : AbstractHandler() {
       }
       .sortedByDescending { apkInfo -> apkInfo.apkFileName.uploadedOn }
 
-    val html = buildIndexHtmlPage(apkInfoList)
+    val html = buildIndexHtmlPage(apkInfoList, apksCount)
 
     routingContext
       .response()
@@ -175,52 +177,88 @@ open class ListApksHandler : AbstractHandler() {
     return filteredCommits
   }
 
-  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfo>): String {
+  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfo>, apksCount: Int): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkInfoList) }
+        body { createBody(apkInfoList, apksCount) }
       }
 
       appendln()
     }
   }
 
-  private fun BODY.createBody(apkInfoList: List<ApkInfo>) {
-    for ((index, apkInfo) in apkInfoList.withIndex()) {
-      val apkName = apkInfo.apkFileName
-      val fileSize = apkInfo.fileSize
+  private fun BODY.createBody(apkInfoList: List<ApkInfo>, apksCount: Int) {
+    style {
+      +indexPageCss
+    }
 
-      val fullApkNameFile = apkName.getUuid() + ".apk"
-      val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
+    div {
+      id = "wrapper"
 
-      p {
-        a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
-          +"${serverSettings.apkName}-${fullApkNameFile}"
+      div {
+        id = "middle"
+
+        div {
+          id = "inner"
+
+          for ((index, apkInfo) in apkInfoList.withIndex()) {
+            val apkName = apkInfo.apkFileName
+            val fileSize = apkInfo.fileSize
+
+            val fullApkNameFile = apkName.getUuid() + ".apk"
+            val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
+
+            p {
+              a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
+                +"${serverSettings.apkName}-${fullApkNameFile}"
+              }
+
+              val fileSizeStr = if (fileSize < 0) {
+                " ???B "
+              } else {
+                if (fileSize < 1024) {
+                  " ${fileSize}B "
+                } else {
+                  " ${fileSize / 1024}KB "
+                }
+              }
+
+              +fileSizeStr
+
+              val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
+              +" Uploaded on ${time} "
+
+              if (index == 0) {
+                +" (LATEST)"
+              }
+
+              br {
+                a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
+                  +"[View commits]"
+                }
+              }
+            }
+          }
         }
+        div {
+          id = "bottom"
 
-        val fileSizeStr = if (fileSize < 0) {
-          " ??? KB "
-        } else {
-          " ${fileSize / 1024} KB "
-        }
+          div {
+            id = "pages"
 
-        val sb = StringBuilder(16)
-        sb.append(fileSizeStr)
+            val pagesCount = apksCount / COUNT_PER_PAGE_COUNT
 
-        if (index == 0) {
-          sb.append(" (LATEST)")
-        }
-
-        +sb.toString()
-
-        br {
-          val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
-          +" Uploaded on ${time}"
-
-          br {
-            a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
-              +"[View commits]"
+            if (pagesCount <= 1) {
+              a("http://127.0.0.1:8080/apks/0") {
+                +"0"
+              }
+            } else {
+              for (page in 0 until pagesCount) {
+                a("http://127.0.0.1:8080/apks/$page") {
+                  +page.toString()
+                }
+              }
             }
           }
         }

@@ -1,7 +1,9 @@
 package extensions
 
 import org.jetbrains.exposed.sql.*
+import java.io.File
 import java.lang.Byte.toUnsignedInt
+import java.nio.file.Paths
 
 fun ByteArray.toHex(): String {
   return joinToString("") {
@@ -27,4 +29,9 @@ fun <T> Table.selectFilterDuplicates(
     .map { resultRow -> mapper(resultRow) }
 
   return originalList.filterDuplicates(possibleDuplicates)
+}
+
+fun getResourceFile(fileName: String): File {
+  val resourceDirectory = Paths.get("src", "main", "resources")
+  return File(resourceDirectory.toFile().absolutePath, fileName)
 }
