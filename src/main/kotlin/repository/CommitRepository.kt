@@ -16,7 +16,7 @@ open class CommitRepository : BaseRepository() {
   private val logger = LoggerFactory.getLogger(CommitRepository::class.java)
   private val commitParser by inject<CommitParser>()
 
-  suspend fun insertCommits(apkVersion: Long, latestCommits: String): Result<List<Commit>> {
+  open suspend fun insertCommits(apkVersion: Long, latestCommits: String): Result<List<Commit>> {
     if (latestCommits.isEmpty()) {
       return Result.failure(IllegalArgumentException("latestCommits is empty"))
     }
@@ -115,7 +115,7 @@ open class CommitRepository : BaseRepository() {
     }
   }
 
-  suspend fun removeCommits(commits: List<Commit>): Result<Unit> {
+  open suspend fun removeCommits(commits: List<Commit>): Result<Unit> {
     require(commits.isNotEmpty()) { "removeCommits() commits must not be empty" }
 
     return dbWrite {
@@ -162,6 +162,12 @@ open class CommitRepository : BaseRepository() {
       if (result.isFailure) {
         throw result.exceptionOrNull()!!
       }
+    }
+  }
+
+  suspend fun getCommitsCount(): Result<Int> {
+    return dbRead {
+      CommitTable.selectAll().count()
     }
   }
 

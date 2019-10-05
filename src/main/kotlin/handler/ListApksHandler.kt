@@ -139,7 +139,13 @@ open class ListApksHandler : AbstractHandler() {
       return -1
     }
 
-    val fileSizeResult = fileSystem.getFileSize(findFileResult.getOrNull()!!)
+    val filePath = findFileResult.getOrNull()
+    if (filePath == null) {
+      logger.error("Apk with uuid ${apkUuid} was not found")
+      return -1
+    }
+
+    val fileSizeResult = fileSystem.getFileSize(filePath)
     if (fileSizeResult.isSuccess) {
       return fileSizeResult.getOrNull()!!
     }

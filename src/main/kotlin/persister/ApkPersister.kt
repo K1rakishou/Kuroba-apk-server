@@ -18,7 +18,7 @@ open class ApkPersister : KoinComponent {
   private val fileSystem by inject<FileSystem>()
   private val serverSettings by inject<ServerSettings>()
 
-  suspend fun store(
+  open suspend fun store(
     apkFile: FileUpload,
     apkVersion: Long,
     parsedCommits: List<Commit>,
@@ -65,7 +65,7 @@ open class ApkPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()
@@ -84,7 +84,11 @@ open class ApkPersister : KoinComponent {
       return Result.failure(findFileResult.exceptionOrNull()!!)
     }
 
-    return fileSystem.removeFileAsync(findFileResult.getOrNull()!!)
+    val filePath = findFileResult.getOrNull()
+      // Does not exist
+      ?: return Result.success(Unit)
+
+    return fileSystem.removeFileAsync(filePath)
   }
 
   private fun getFullPath(apkVersion: Long, latestCommit: Commit, now: DateTime): Result<String> {

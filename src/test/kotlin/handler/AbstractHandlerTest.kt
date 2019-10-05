@@ -1,6 +1,8 @@
 package handler
 
 import ServerSettings
+import db.ApkTable
+import db.CommitTable
 import dispatchers.DispatcherProvider
 import dispatchers.TestDispatcherProvider
 import fs.FileSystem
@@ -9,6 +11,8 @@ import init.CommitRepositoryInitializer
 import init.MainInitializer
 import io.vertx.core.Vertx
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import org.mockito.Mockito
@@ -29,8 +33,8 @@ abstract class AbstractHandlerTest {
   protected lateinit var serverSettings: ServerSettings
   protected lateinit var commitParser: CommitParser
   protected lateinit var fileSystem: FileSystem
-  protected lateinit var commitRepository: CommitRepository
-  protected lateinit var apkRepository: ApkRepository
+  protected lateinit var commitsRepository: CommitRepository
+  protected lateinit var apksRepository: ApkRepository
   protected lateinit var fileHeaderChecker: FileHeaderChecker
   protected lateinit var commitPersister: CommitPersister
   protected lateinit var apkPersister: ApkPersister
@@ -46,11 +50,18 @@ abstract class AbstractHandlerTest {
     commitRepositoryInitializer = Mockito.spy(CommitRepositoryInitializer())
     apkRepositoryInitializer = Mockito.spy(ApkRepositoryInitializer())
     serverSettings =
-      Mockito.spy(ServerSettings("http://127.0.0.1:8080", File("src/test/resources/test_dump"), "test_key", "kuroba-dev"))
+      Mockito.spy(
+        ServerSettings(
+          "http://127.0.0.1:8080",
+          File("src/test/resources/test_dump"),
+          "test_key",
+          "kuroba-dev"
+        )
+      )
     commitParser = Mockito.spy(CommitParser())
     fileSystem = Mockito.spy(FileSystem())
-    commitRepository = Mockito.spy(CommitRepository())
-    apkRepository = Mockito.spy(ApkRepository())
+    commitsRepository = Mockito.spy(CommitRepository())
+    apksRepository = Mockito.spy(ApkRepository())
     fileHeaderChecker = Mockito.spy(FileHeaderChecker())
     commitPersister = Mockito.spy(CommitPersister())
     apkPersister = Mockito.spy(ApkPersister())
@@ -79,8 +90,8 @@ abstract class AbstractHandlerTest {
     single { fileSystem }
 
     // Repositories
-    single { commitRepository }
-    single { apkRepository }
+    single { commitsRepository }
+    single { apksRepository }
 
     // Services
     single { fileHeaderChecker }
@@ -93,6 +104,21 @@ abstract class AbstractHandlerTest {
     single { ListApksHandler }
     single { getLatestUploadedCommitHashHandler }
     single { viewCommitsHandler }
+  }
+
+  protected fun initDatabase(): Database {
+    return run {
+      println("Initializing DB")
+      val database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
+
+      transaction(database) {
+        SchemaUtils.create(CommitTable)
+        SchemaUtils.create(ApkTable)
+      }
+
+      println("Done")
+      return@run database
+    }
   }
 
 }

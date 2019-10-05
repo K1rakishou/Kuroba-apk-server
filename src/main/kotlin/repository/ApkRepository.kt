@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.*
 open class ApkRepository : BaseRepository() {
   private val logger = LoggerFactory.getLogger(ApkRepository::class.java)
 
-  suspend fun insertApks(apks: List<Apk>): Result<Unit> {
+  open suspend fun insertApks(apks: List<Apk>): Result<Unit> {
     if (apks.isEmpty()) {
       return Result.success(Unit)
     }
@@ -54,7 +54,7 @@ open class ApkRepository : BaseRepository() {
     return dbRead { ApkTable.selectAll().count() }
   }
 
-  suspend fun removeApk(apk: Apk): Result<Unit> {
+  open suspend fun removeApk(apk: Apk): Result<Unit> {
     return dbWrite {
       ApkTable.deleteWhere {
         ApkTable.groupUuid.eq(apk.apkUuid) and

@@ -18,7 +18,7 @@ open class CommitPersister : KoinComponent {
   private val serverSettings by inject<ServerSettings>()
   private val fileSystem by inject<FileSystem>()
 
-  suspend fun store(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun store(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty()) { "store() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()
@@ -62,7 +62,7 @@ open class CommitPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
+  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
     require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
 
     val latestCommit = parsedCommits.first()

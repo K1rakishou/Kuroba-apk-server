@@ -149,7 +149,7 @@ open class UploadHandler : AbstractHandler() {
       sendResponse(
         routingContext,
         "Couldn't store commits",
-        HttpResponseStatus.BAD_REQUEST
+        HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
       return Result.failure(storeResult.exceptionOrNull()!!)
@@ -189,7 +189,11 @@ open class UploadHandler : AbstractHandler() {
         now
       )
 
-      val fullPath = Paths.get(serverSettings.apksDir.absolutePath, fileName).toFile().absolutePath
+      val fullPath = Paths.get(
+        serverSettings.apksDir.absolutePath,
+        fileName
+      ).toFile().absolutePath
+
       apk = Apk(headCommit.apkUuid, fullPath, now)
 
       val insertApkResult = apksRepository.insertApks(listOf(apk))

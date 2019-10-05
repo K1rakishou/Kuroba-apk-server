@@ -3,6 +3,7 @@ package handler
 import ServerVerticle
 import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
 import data.Apk
 import data.ApkFileName
@@ -34,7 +35,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.mockito.ArgumentMatchers.*
+import org.mockito.Mockito
 import java.io.File
+import java.io.IOException
 import java.nio.file.Paths
 
 
@@ -59,21 +63,6 @@ class UploadHandlerTest : AbstractHandlerTest() {
     transaction(database) {
       SchemaUtils.drop(CommitTable)
       SchemaUtils.drop(ApkTable)
-    }
-  }
-
-  private fun initDatabase(): Database {
-    return run {
-      println("Initializing DB")
-      val database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
-
-      transaction(database) {
-        SchemaUtils.create(CommitTable)
-        SchemaUtils.create(ApkTable)
-      }
-
-      println("Done")
-      return@run database
     }
   }
 
@@ -118,7 +107,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
     headers: MultiMap = goodHeaders,
     form: MultipartForm = goodFiles,
     mocks: suspend () -> Unit,
-    func: (HttpResponse<String>) -> Unit
+    func: suspend (HttpResponse<String>) -> Unit
   ) {
     startKoin {
       modules(getModule(vertx, database))
@@ -140,7 +129,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
               }
 
               try {
-                func(asyncResult.result())
+                runBlocking { func(asyncResult.result()) }
                 testContext.completeNow()
               } catch (error: Throwable) {
                 testContext.failNow(error)
@@ -289,6 +278,142 @@ class UploadHandlerTest : AbstractHandlerTest() {
   }
 
   @Test
+  fun `test commit repository cannot insert new commits`(vertx: Vertx, testContext: VertxTestContext) {
+    uploadHandlerTestFunc(
+      vertx,
+      testContext,
+      goodHeaders,
+      multipartFormOf(
+        Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
+        Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Result.failure<List<Commit>>(IOException("BAM"))).`when`(commitsRepository).insertCommits(anyLong(), anyString())
+      }, { response ->
+        assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
+        assertEquals("Couldn't store commits", response.body())
+
+        assertEquals(0, commitsRepository.getCommitsCount().getOrNull()!!)
+        assertEquals(0, apksRepository.getTotalApksCount().getOrNull()!!)
+
+        val resultFiles = serverSettings.apksDir.listFiles()!!
+        assertEquals(0, resultFiles.size)
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).insertCommits(anyLong(), anyString())
+        Mockito.verify(apksRepository, Mockito.times(0)).insertApks(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(0)).store(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+
+        Mockito.verify(commitsRepository, Mockito.times(0)).removeCommits(anyList())
+        Mockito.verify(apksRepository, Mockito.times(0)).removeApk(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(0)).remove(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(0)).remove(anyLong(), anyList())
+      })
+  }
+
+  @Test
+  fun `test apk repository cannot insert new apk`(vertx: Vertx, testContext: VertxTestContext) {
+    uploadHandlerTestFunc(
+      vertx,
+      testContext,
+      goodHeaders,
+      multipartFormOf(
+        Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
+        Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apksRepository).insertApks(anyList())
+      }, { response ->
+        assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
+        assertEquals("Couldn't store commits", response.body())
+
+        assertEquals(0, commitsRepository.getCommitsCount().getOrNull()!!)
+        assertEquals(0, apksRepository.getTotalApksCount().getOrNull()!!)
+
+        val resultFiles = serverSettings.apksDir.listFiles()!!
+        assertEquals(0, resultFiles.size)
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).insertCommits(anyLong(), anyString())
+        Mockito.verify(apksRepository, Mockito.times(1)).insertApks(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(0)).store(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
+        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+      })
+  }
+
+  @Test
+  fun `test commit persister cannot store new commits`(vertx: Vertx, testContext: VertxTestContext) {
+    uploadHandlerTestFunc(
+      vertx,
+      testContext,
+      goodHeaders,
+      multipartFormOf(
+        Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
+        Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(commitPersister).store(anyLong(), anyList())
+      }, { response ->
+        assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
+        assertEquals("Couldn't store commits", response.body())
+
+        assertEquals(0, commitsRepository.getCommitsCount().getOrNull()!!)
+        assertEquals(0, apksRepository.getTotalApksCount().getOrNull()!!)
+
+        val resultFiles = serverSettings.apksDir.listFiles()!!
+        assertEquals(0, resultFiles.size)
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).insertCommits(anyLong(), anyString())
+        Mockito.verify(apksRepository, Mockito.times(1)).insertApks(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(1)).store(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
+        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+      })
+  }
+
+  @Test
+  fun `test apk persister cannot store new apk`(vertx: Vertx, testContext: VertxTestContext) {
+    uploadHandlerTestFunc(
+      vertx,
+      testContext,
+      goodHeaders,
+      multipartFormOf(
+        Triple(APK_FILE_NAME, goodApk, APK_MIME_TYPE),
+        Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
+      ), {
+        doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apkPersister).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+      }, { response ->
+        assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
+        assertEquals("Couldn't store commits", response.body())
+
+        assertEquals(0, commitsRepository.getCommitsCount().getOrNull()!!)
+        assertEquals(0, apksRepository.getTotalApksCount().getOrNull()!!)
+
+        val resultFiles = serverSettings.apksDir.listFiles()!!
+        assertEquals(0, resultFiles.size)
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).insertCommits(anyLong(), anyString())
+        Mockito.verify(apksRepository, Mockito.times(1)).insertApks(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(1)).store(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(1)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+
+        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
+        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
+        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+      })
+  }
+
+  @Test
   fun `test everything is ok`(vertx: Vertx, testContext: VertxTestContext) {
     uploadHandlerTestFunc(
       vertx,
@@ -313,6 +438,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
           assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
           assertEquals(Commit.COMMIT_DATE_TIME_PRINTER.parseDateTime("2019-09-19T14:52:49+00:00"), commits.first().committedAt)
+          assertEquals(1, commits.count { it.head })
 
           val apks = ApkTable.selectAll()
             .map { resultRow -> Apk.fromResultRow(resultRow) }
@@ -346,6 +472,9 @@ class UploadHandlerTest : AbstractHandlerTest() {
         assertEquals("112233_8acb72611099915c81998776641606b1b47db583", parsedCommits.first().apkUuid)
         assertEquals("8acb72611099915c81998776641606b1b47db583", parsedCommits.first().commitHash)
         assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", parsedCommits.first().description)
+
+        val body = response.body()
+        assertEquals("Uploaded apk with version code 112233", body)
       })
   }
 

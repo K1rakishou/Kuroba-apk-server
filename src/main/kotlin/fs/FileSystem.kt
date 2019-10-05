@@ -69,6 +69,9 @@ open class FileSystem : KoinComponent {
     }
   }
 
+  /**
+   * Returns null is file does not exist! Be careful when using Result.getOrNull() with null-assert
+   * */
   suspend fun findApkFileAsync(apksDir: String, apkUuid: String): Result<String?> {
     val findFileResult = findFileAsync(
       apksDir,

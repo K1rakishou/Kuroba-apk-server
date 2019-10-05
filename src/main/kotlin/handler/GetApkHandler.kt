@@ -51,7 +51,19 @@ open class GetApkHandler : AbstractHandler() {
 
       return Result.failure(findFileResult.exceptionOrNull()!!)
     } else {
-      findFileResult.getOrNull()!!
+      findFileResult.getOrNull()
+    }
+
+    if (apkPath == null) {
+      logger.error("findApkFileAsync() returned null")
+
+      sendResponse(
+        routingContext,
+        "Apk with uuid ${apkUuid} was not found",
+        HttpResponseStatus.NOT_FOUND
+      )
+
+      return Result.failure(FileDoesNotExist(serverSettings.apksDir.absolutePath, apkUuid))
     }
 
     val apkFileName = ApkFileName.fromString(apkPath)
@@ -83,3 +95,5 @@ open class GetApkHandler : AbstractHandler() {
     const val APK_NAME_PARAM = "apk"
   }
 }
+
+class FileDoesNotExist(apksPath: String, apkUuid: String) : Exception("Apk with uuid ${apkUuid} does not exist in directory ${apksPath}")
