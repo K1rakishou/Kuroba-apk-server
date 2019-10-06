@@ -88,6 +88,12 @@ open class ApkRepository(
     }
   }
 
+  suspend fun testGetAll(): Result<List<Apk>> {
+    return dbRead {
+      ApkTable.selectAll().map { resultRow -> Apk.fromResultRow(resultRow) }
+    }
+  }
+
   companion object {
     private const val CHUNK_SIZE = 500
   }

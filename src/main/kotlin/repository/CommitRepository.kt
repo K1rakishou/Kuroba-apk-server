@@ -182,6 +182,13 @@ open class CommitRepository(
     }
   }
 
+  suspend fun testGetAll(): Result<List<Commit>> {
+    return dbRead {
+      CommitTable.selectAll()
+        .map { resultRow -> Commit.fromResultRow(resultRow) }
+    }
+  }
+
   companion object {
     private const val COMMITS_CHUNK_SIZE = 512
   }

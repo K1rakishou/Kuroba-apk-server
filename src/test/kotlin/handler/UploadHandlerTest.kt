@@ -22,6 +22,7 @@ import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.ext.web.multipart.MultipartForm
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -609,8 +610,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals(count, commitsRepository.getCommitsCount().getOrNull()!!)
           assertEquals(count, apksRepository.getTotalApksCount().getOrNull()!!)
 
-          val allFiles = dir.listFiles()!!
-          assertEquals(count * 2, allFiles.size)
+          val allFiles = serverSettings.apksDir.listFiles()!!
+          assertEquals((count * 2) + 1, allFiles.size) // Don't forget the "generated" directory
 
           val apks = allFiles.filter { file -> file.name.endsWith(".apk") }
           assertEquals(count, apks.size)
@@ -625,4 +626,215 @@ class UploadHandlerTest : AbstractHandlerTest() {
     testContext.completeNow()
   }
 
+  @Test
+  fun `test old apk remover`(vertx: Vertx, testContext: VertxTestContext) {
+    val count = 20
+
+    startKoin {
+      modules(getModule(vertx, database, dispatcherProvider))
+    }
+
+    val dir = File(serverSettings.apksDir, "generated")
+    if (!dir.exists()) {
+      assertTrue(dir.mkdirs())
+    }
+
+    fun generateApksWithCommits(): List<Pair<MultipartForm, MultiMap>> {
+      val result = mutableListOf<Pair<MultipartForm, MultiMap>>()
+
+      for (i in 0 until count) {
+        val apkFile = File(dir, "${i}.apk")
+        apkFile.writeText(String(byteArrayOf(0x50, 0x4B)) + "${i}")
+
+        val commitFile = File(dir, "${i}_commits.txt")
+        val commitText = String.format(
+          "%d; %s; %s",
+          1000000 + i,
+          Commit.COMMIT_DATE_TIME_PRINTER.print(1571111111111),
+          "description ${i}"
+        )
+        commitFile.writeText(commitText)
+
+        val headers = headersOf(
+          Pair(APK_VERSION_HEADER_NAME, i.toString()),
+          Pair(SECRET_KEY_HEADER_NAME, "test_key")
+        )
+
+        val files = multipartFormOf(
+          Triple(APK_FILE_NAME, apkFile, APK_MIME_TYPE),
+          Triple(COMMITS_FILE_NAME, commitFile, COMMITS_MIME_TYPE)
+        )
+
+        result += Pair(files, headers)
+      }
+
+      return result
+    }
+
+    suspend fun sendRequest(
+      vertx: Vertx,
+      data: List<Pair<MultipartForm, MultiMap>>,
+      mocks: suspend () -> Unit,
+      uploadedTestFunc: suspend (HttpResponse<String>) -> Unit,
+      allUploadedTestFunc: suspend () -> Unit
+    ) {
+      mocks()
+
+      val executor = Executors.newFixedThreadPool(1)
+
+      vertx.deployVerticle(ServerVerticle(dispatcherProvider))
+      val client = WebClient.create(vertx)
+
+      data.mapIndexed { index, (mf, mm) ->
+        val countDownLatch = CountDownLatch(1)
+
+        executor.execute {
+          println("[${Thread.currentThread().name}] Sending request $index")
+
+          client
+            .post(8080, "localhost", "/upload")
+            .putHeaders(mm)
+            .`as`(BodyCodec.string())
+            .sendMultipartForm(mf) { asyncResult ->
+              runBlocking {
+                try {
+                  uploadedTestFunc(asyncResult.result())
+                } catch (error: Throwable) {
+                  stopKoin()
+                  testContext.failNow(error)
+                } finally {
+                  countDownLatch.countDown()
+                }
+              }
+            }
+        }
+
+        countDownLatch.await()
+      }
+
+      try {
+        allUploadedTestFunc()
+      } catch (error: Throwable) {
+        stopKoin()
+        testContext.failNow(error)
+      }
+
+      vertx.close()
+    }
+
+    runBlocking {
+      val filesWithHeader = generateApksWithCommits()
+
+      sendRequest(
+        vertx,
+        filesWithHeader, {
+          doReturn(true).`when`(mainInitializer).initEverything()
+          doReturn(count / 2).`when`(serverSettings).maxApkFiles
+          doReturn(true).`when`(timeUtils).isItTimeToDeleteOldApks(anyOrNull(), anyOrNull())
+
+          doReturn(
+            DateTime(1570376694000),
+            DateTime(1570376694001),
+            DateTime(1570376694002),
+            DateTime(1570376694003),
+            DateTime(1570376694004),
+            DateTime(1570376694005),
+            DateTime(1570376694006),
+            DateTime(1570376694007),
+            DateTime(1570376694008),
+            DateTime(1570376694009),
+            DateTime(1570376694010),
+            DateTime(1570376694011),
+            DateTime(1570376694012),
+            DateTime(1570376694013),
+            DateTime(1570376694014),
+            DateTime(1570376694015),
+            DateTime(1570376694016),
+            DateTime(1570376694017),
+            DateTime(1570376694018),
+            DateTime(1570376694019)
+          ).`when`(timeUtils).now()
+
+        }, { response ->
+          assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
+        }, {
+          // Wait a little bit so that the files from the disk are deleted
+          delay(25)
+
+          val commits = commitsRepository.testGetAll().getOrNull()!!
+          val apks = apksRepository.testGetAll().getOrNull()!!
+
+          assertEquals(count / 2, commits.size)
+          assertEquals(count / 2, apks.size)
+          assertEquals(count / 2, commitsRepository.getCommitsCount().getOrNull()!!)
+          assertEquals(count / 2, apksRepository.getTotalApksCount().getOrNull()!!)
+
+          val apkVersionByCommits = commits.map { it.apkVersion }
+          val apkVersionByApks = apks.map { it.apkVersion }
+          val expected = arrayOf<Long>(10, 11, 12, 13, 14, 15, 16, 17, 18, 19)
+
+          expected.forEachIndexed { index, apkVersion ->
+            assertEquals(apkVersion, apkVersionByCommits[index])
+          }
+
+          expected.forEachIndexed { index, apkVersion ->
+            assertEquals(apkVersion, apkVersionByApks[index])
+          }
+
+          apkVersionByCommits.forEachIndexed { index, apkVersion ->
+            assertEquals(apkVersion, apkVersionByApks[index])
+          }
+
+          val allFiles = serverSettings.apksDir.listFiles()!!
+          assertEquals(count + 1, allFiles.size) // Don't forget the "generated" directory
+
+          val apksFiles = allFiles.filter { file -> file.name.endsWith(".apk") }
+          assertEquals(count / 2, apksFiles.size)
+
+          val commitsFiles = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
+          assertEquals(count / 2, commitsFiles.size)
+
+          val apkFileNames = apksFiles.map { it.name }
+          val commitFileNames = commitsFiles.map { it.name }
+
+          val expectedApkNames = arrayOf(
+            "10_1000010_1570376694010.apk",
+            "11_1000011_1570376694011.apk",
+            "12_1000012_1570376694012.apk",
+            "13_1000013_1570376694013.apk",
+            "14_1000014_1570376694014.apk",
+            "15_1000015_1570376694015.apk",
+            "16_1000016_1570376694016.apk",
+            "17_1000017_1570376694017.apk",
+            "18_1000018_1570376694018.apk",
+            "19_1000019_1570376694019.apk"
+          )
+
+          val expectedCommitNames = arrayOf(
+            "10_1000010_commits.txt",
+            "11_1000011_commits.txt",
+            "12_1000012_commits.txt",
+            "13_1000013_commits.txt",
+            "14_1000014_commits.txt",
+            "15_1000015_commits.txt",
+            "16_1000016_commits.txt",
+            "17_1000017_commits.txt",
+            "18_1000018_commits.txt",
+            "19_1000019_commits.txt"
+          )
+
+          expectedApkNames.forEachIndexed { index, apkName ->
+            assertEquals(apkName, apkFileNames[index])
+          }
+
+          expectedCommitNames.forEachIndexed { index, apkName ->
+            assertEquals(apkName, commitFileNames[index])
+          }
+        }
+      )
+    }
+
+    stopKoin()
+    testContext.completeNow()
+  }
 }

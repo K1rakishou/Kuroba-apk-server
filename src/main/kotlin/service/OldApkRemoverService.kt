@@ -12,6 +12,7 @@ import org.joda.time.Instant
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import repository.ApkRepository
+import util.TimeUtils
 import kotlin.coroutines.CoroutineContext
 
 open class OldApkRemoverService(
@@ -23,7 +24,8 @@ open class OldApkRemoverService(
   private val apkRepository by inject<ApkRepository>()
   private val serverSettings by inject<ServerSettings>()
   private val deleteApkFullyService by inject<DeleteApkFullyService>()
-  private val apksToDeleteCount by lazy { (serverSettings.maxApkFiles / 100) * 10 } // Delete 10% of the apks
+  private val timeUtils by inject<TimeUtils>()
+  private val apksToDeleteCount by lazy { ((serverSettings.maxApkFiles.toFloat() / 100f) * 10f).toInt() } // Delete 10% of the apks
 
   override val coroutineContext: CoroutineContext
     get() = job + dispatcherProvider.APK_REMOVER()
@@ -33,19 +35,19 @@ open class OldApkRemoverService(
     var lastTimeCheck = Instant.now()
 
     for (event in channel) {
-      val now = Instant.now()
-      val nextRunTime = lastTimeCheck.plus(serverSettings.apkDeletionInterval)
-
       if (!isActive) {
         break
       }
 
-      if (!now.isAfter(nextRunTime)) {
+      val now = Instant.now()
+      val nextRunTime = lastTimeCheck.plus(serverSettings.apkDeletionInterval)
+
+      if (!timeUtils.isItTimeToDeleteOldApks(now, nextRunTime)) {
         continue
       }
 
-      deleteOldApksIfThereAreAny()
       lastTimeCheck = now
+      deleteOldApksIfThereAreAny()
     }
   }
 
@@ -62,7 +64,7 @@ open class OldApkRemoverService(
       }
 
       val apksCount = apksCountResult.getOrNull()!!
-      if (apksCount < serverSettings.maxApkFiles) {
+      if (apksCount <= serverSettings.maxApkFiles) {
         logger.info("Nothing to delete, apksCount = $apksCount, maxApkFiles = ${serverSettings.maxApkFiles}")
         return
       }
