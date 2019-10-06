@@ -12,10 +12,10 @@ import org.koin.core.inject
 import java.sql.Connection
 import kotlin.coroutines.CoroutineContext
 
-abstract class BaseRepository : KoinComponent, CoroutineScope {
-  protected val database by inject<Database>()
-  private val dispatcherProvider by inject<DispatcherProvider>()
-
+abstract class BaseRepository(
+  private val dispatcherProvider: DispatcherProvider
+) : KoinComponent, CoroutineScope {
+  private val database by inject<Database>()
   private val job = SupervisorJob()
 
   override val coroutineContext: CoroutineContext

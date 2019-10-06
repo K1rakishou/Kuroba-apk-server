@@ -1,3 +1,4 @@
+
 html,
 body,
 #wrapper {
@@ -5,6 +6,22 @@ body,
   width: 100%;
   padding: 0;
   margin: 0;
+}
+
+#pages {
+  display: inline-block;
+}
+
+#pages a {
+  color: white;
+  float: left;
+  padding: 4px 8px;
+  text-decoration: none;
+}
+
+#pages a.active {
+  background-color: #8FAFAF;
+  color: white;
 }
 
 #wrapper,
@@ -27,6 +44,14 @@ body,
   margin-bottom: 16px;
 }
 
+#inner a:link {
+  color: #C3C7C7;
+}
+
+#inner a:visited {
+  color: #8FAFAF;
+}
+
 #bottom {
   bottom: 0;
   height: 100px;
@@ -35,18 +60,4 @@ body,
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-}
-
-#pages {
-  margin-right: 8px;
-  margin-left: 8px;
-  color: #8FAFAF;
-}
-
-a:link {
-  color: #C3C7C7;
-}
-
-a:visited {
-  color: #8FAFAF;
 }

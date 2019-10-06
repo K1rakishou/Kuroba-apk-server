@@ -66,7 +66,8 @@ data class Commit(
 
   override fun toString(): String {
     return String.format(
-      "commitHash = %s, committedAt = %s, description = %s",
+      "head = %b, commitHash = %s, committedAt = %s, description = %s",
+      head,
       commitHash,
       COMMIT_DATE_TIME_PRINTER.print(committedAt),
       description

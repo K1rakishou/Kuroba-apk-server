@@ -104,6 +104,16 @@ class UploadHandlerTest : AbstractHandlerTest() {
     return form
   }
 
+  private fun cleanupFiles() {
+    serverSettings.apksDir.listFiles()!!.forEach { file ->
+      if (file.isFile) {
+        assertTrue(file.delete())
+      } else if (file.isDirectory) {
+        assertTrue(file.deleteRecursively())
+      }
+    }
+  }
+
   private fun uploadHandlerTestFunc(
     vertx: Vertx,
     testContext: VertxTestContext,
@@ -113,11 +123,13 @@ class UploadHandlerTest : AbstractHandlerTest() {
     func: suspend (HttpResponse<String>) -> Unit
   ) {
     startKoin {
-      modules(getModule(vertx, database))
+      modules(getModule(vertx, database, dispatcherProvider))
       runBlocking { mocks() }
     }
 
-    vertx.deployVerticle(ServerVerticle(), testContext.succeeding { id ->
+    cleanupFiles()
+
+    vertx.deployVerticle(ServerVerticle(dispatcherProvider), testContext.succeeding { id ->
       val client = WebClient.create(vertx)
 
       client
@@ -140,6 +152,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
                 serverSettings.apksDir.listFiles()!!.forEach { file -> file.delete() }
               }
             } finally {
+              cleanupFiles()
               stopKoin()
             }
           }
@@ -151,6 +164,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
   fun `test without any parameters`(vertx: Vertx, testContext: VertxTestContext) {
     uploadHandlerTestFunc(vertx, testContext, headersOf(), multipartFormOf(), {
       doReturn(true).`when`(mainInitializer).initEverything()
+      doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
     }, { response ->
       assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
       assertEquals("No apk version provided", response.body())
@@ -165,6 +179,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       headersOf(Pair(APK_VERSION_HEADER_NAME, "abc")),
       multipartFormOf(), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals("Apk version must be numeric", response.body())
@@ -182,6 +197,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       ),
       multipartFormOf(), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals("Secret key is bad", response.body())
@@ -198,6 +214,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(APK_FILE_NAME, badApk, APK_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
@@ -214,6 +231,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals("FileUploads count does not equal to 2, actual = 1", response.body())
@@ -231,6 +249,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple("test2", goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals(
@@ -251,6 +270,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple("test2", goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals(
@@ -271,6 +291,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Triple(COMMITS_FILE_NAME, goodCommits, COMMITS_MIME_TYPE)
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.BAD_REQUEST.code(), response.statusCode())
         assertEquals(
@@ -293,6 +314,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(Result.failure<List<Commit>>(IOException("BAM"))).`when`(commitsRepository)
           .insertCommits(anyLong(), anyString())
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -308,10 +330,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Mockito.verify(commitPersister, Mockito.times(0)).store(anyLong(), anyList())
         Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
 
-        Mockito.verify(commitsRepository, Mockito.times(0)).removeCommits(anyList())
-        Mockito.verify(apksRepository, Mockito.times(0)).removeApk(anyOrNull())
-        Mockito.verify(commitPersister, Mockito.times(0)).remove(anyLong(), anyList())
-        Mockito.verify(apkPersister, Mockito.times(0)).remove(anyLong(), anyList())
+        Mockito.verify(deleteApkFullyService, Mockito.times(0)).deleteApks(anyList())
       })
   }
 
@@ -327,6 +346,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apksRepository).insertApks(anyList())
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -342,10 +362,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Mockito.verify(commitPersister, Mockito.times(0)).store(anyLong(), anyList())
         Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
 
-        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
-        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
-        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
-        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(deleteApkFullyService, Mockito.times(1)).deleteApks(anyList())
       })
   }
 
@@ -361,6 +378,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(commitPersister).store(anyLong(), anyList())
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -376,10 +394,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Mockito.verify(commitPersister, Mockito.times(1)).store(anyLong(), anyList())
         Mockito.verify(apkPersister, Mockito.times(0)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
 
-        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
-        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
-        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
-        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(deleteApkFullyService, Mockito.times(1)).deleteApks(anyList())
       })
   }
 
@@ -396,6 +411,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(Result.failure<Unit>(IOException("BAM"))).`when`(apkPersister)
           .store(anyOrNull(), anyLong(), anyList(), anyOrNull())
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.INTERNAL_SERVER_ERROR.code(), response.statusCode())
         assertEquals("Couldn't store commits", response.body())
@@ -411,10 +427,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         Mockito.verify(commitPersister, Mockito.times(1)).store(anyLong(), anyList())
         Mockito.verify(apkPersister, Mockito.times(1)).store(anyOrNull(), anyLong(), anyList(), anyOrNull())
 
-        Mockito.verify(commitsRepository, Mockito.times(1)).removeCommits(anyList())
-        Mockito.verify(apksRepository, Mockito.times(1)).removeApk(anyOrNull())
-        Mockito.verify(commitPersister, Mockito.times(1)).remove(anyLong(), anyList())
-        Mockito.verify(apkPersister, Mockito.times(1)).remove(anyLong(), anyList())
+        Mockito.verify(deleteApkFullyService, Mockito.times(1)).deleteApks(anyList())
       })
   }
 
@@ -430,6 +443,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       ), {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(DateTime(1570287894192)).`when`(timeUtils).now()
+        doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
       }, { response ->
         assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
 
@@ -493,7 +507,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
     val count = 500
 
     startKoin {
-      modules(getModule(vertx, database))
+      modules(getModule(vertx, database, dispatcherProvider))
     }
 
     val dir = File(serverSettings.apksDir, "generated")
@@ -543,9 +557,9 @@ class UploadHandlerTest : AbstractHandlerTest() {
       mocks()
 
       val countDownLatch = CountDownLatch(data.size)
-      val executor = Executors.newFixedThreadPool(100)
+      val executor = Executors.newFixedThreadPool(data.size)
 
-      vertx.deployVerticle(ServerVerticle())
+      vertx.deployVerticle(ServerVerticle(dispatcherProvider))
       val client = WebClient.create(vertx)
 
       val futures = data.mapIndexed { index, (mf, mm) ->
@@ -588,6 +602,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         vertx,
         filesWithHeader, {
           doReturn(true).`when`(mainInitializer).initEverything()
+          doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
         }, { response ->
           assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
         }, {
@@ -602,14 +617,6 @@ class UploadHandlerTest : AbstractHandlerTest() {
 
           val commits = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
           assertEquals(count, commits.size)
-
-          serverSettings.apksDir.listFiles()!!.forEach { file ->
-            if (file.isFile) {
-              assertTrue(file.delete())
-            } else if (file.isDirectory) {
-              assertTrue(file.deleteRecursively())
-            }
-          }
         }
       )
     }

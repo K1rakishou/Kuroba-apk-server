@@ -2,7 +2,6 @@ package di
 
 import ServerSettings
 import dispatchers.DispatcherProvider
-import dispatchers.RealDispatcherProvider
 import fs.FileSystem
 import handler.*
 import init.ApkRepositoryInitializer
@@ -17,7 +16,9 @@ import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
+import service.DeleteApkFullyService
 import service.FileHeaderChecker
+import service.OldApkRemoverService
 import util.TimeUtils
 import java.io.File
 
@@ -26,17 +27,20 @@ class MainModule(
   private val database: Database,
   private val baseUrl: String,
   private val apksDir: File,
-  private val secretKey: String
+  private val secretKey: String,
+  private val dispatcherProvider: DispatcherProvider
+
 ) {
 
   fun createMainModule(): Module {
+    // We cannot inject this because it breaks tests in classes that inherit from CoroutineScope
+
     return module {
       single { vertx }
 
-      single<DispatcherProvider> { RealDispatcherProvider() }
       single { CommitRepositoryInitializer() }
       single { ApkRepositoryInitializer() }
-      single { MainInitializer() }
+      single { MainInitializer(dispatcherProvider) }
 
       single { TimeUtils() }
 
@@ -57,12 +61,15 @@ class MainModule(
       single { FileSystem() }
 
       // Repositories
-      single { CommitRepository() }
-      single { ApkRepository() }
+      single { CommitRepository(dispatcherProvider) }
+      single { ApkRepository(dispatcherProvider) }
 
       // Services
       single { FileHeaderChecker() }
+      single { OldApkRemoverService(dispatcherProvider) }
+      single { DeleteApkFullyService() }
 
+      // Persisters
       single { CommitPersister() }
       single { ApkPersister() }
 

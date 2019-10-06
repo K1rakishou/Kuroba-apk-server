@@ -21,11 +21,15 @@ import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
+import service.DeleteApkFullyService
 import service.FileHeaderChecker
+import service.OldApkRemoverService
 import util.TimeUtils
 import java.io.File
 
 abstract class AbstractHandlerTest {
+  protected val dispatcherProvider = TestDispatcherProvider()
+
   protected lateinit var timeUtils: TimeUtils
   protected lateinit var mainInitializer: MainInitializer
   protected lateinit var commitRepositoryInitializer: CommitRepositoryInitializer
@@ -43,10 +47,12 @@ abstract class AbstractHandlerTest {
   protected lateinit var ListApksHandler: ListApksHandler
   protected lateinit var getLatestUploadedCommitHashHandler: GetLatestUploadedCommitHashHandler
   protected lateinit var viewCommitsHandler: ViewCommitsHandler
+  protected lateinit var deleteApkFullyService: DeleteApkFullyService
+  protected lateinit var oldApkRemoverService: OldApkRemoverService
 
-  protected fun getModule(vertx: Vertx, database: Database): Module = module {
+  protected fun getModule(vertx: Vertx, database: Database, dispatcherProvider: DispatcherProvider): Module = module {
     timeUtils = Mockito.spy(TimeUtils())
-    mainInitializer = Mockito.spy(MainInitializer())
+    mainInitializer = Mockito.spy(MainInitializer(dispatcherProvider))
     commitRepositoryInitializer = Mockito.spy(CommitRepositoryInitializer())
     apkRepositoryInitializer = Mockito.spy(ApkRepositoryInitializer())
     serverSettings =
@@ -60,9 +66,11 @@ abstract class AbstractHandlerTest {
       )
     commitParser = Mockito.spy(CommitParser())
     fileSystem = Mockito.spy(FileSystem())
-    commitsRepository = Mockito.spy(CommitRepository())
-    apksRepository = Mockito.spy(ApkRepository())
+    commitsRepository = Mockito.spy(CommitRepository(dispatcherProvider))
+    apksRepository = Mockito.spy(ApkRepository(dispatcherProvider))
     fileHeaderChecker = Mockito.spy(FileHeaderChecker())
+    deleteApkFullyService = Mockito.spy(DeleteApkFullyService())
+    oldApkRemoverService = Mockito.spy(OldApkRemoverService(dispatcherProvider))
     commitPersister = Mockito.spy(CommitPersister())
     apkPersister = Mockito.spy(ApkPersister())
     uploadHandler = Mockito.spy(UploadHandler())
@@ -73,7 +81,7 @@ abstract class AbstractHandlerTest {
 
     single { timeUtils }
     single { vertx }
-    single<DispatcherProvider> { TestDispatcherProvider() }
+    single<DispatcherProvider> { dispatcherProvider }
     single { mainInitializer }
     single { commitRepositoryInitializer }
     single { apkRepositoryInitializer }
@@ -97,6 +105,8 @@ abstract class AbstractHandlerTest {
     single { fileHeaderChecker }
     single { commitPersister }
     single { apkPersister }
+    single { oldApkRemoverService }
+    single { deleteApkFullyService }
 
     // Handlers
     single { uploadHandler }

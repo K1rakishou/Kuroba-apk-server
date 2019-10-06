@@ -2,6 +2,7 @@ package persister
 
 import ServerSettings
 import ServerVerticle
+import data.Apk
 import data.ApkFileName
 import data.Commit
 import fs.FileSystem
@@ -10,11 +11,13 @@ import io.vertx.ext.web.FileUpload
 import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import repository.CommitRepository
 import java.nio.file.Paths
 
 open class ApkPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(ApkPersister::class.java)
 
+  private val commitsRepository by inject<CommitRepository>()
   private val fileSystem by inject<FileSystem>()
   private val serverSettings by inject<ServerSettings>()
 
@@ -65,30 +68,53 @@ open class ApkPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
-    require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
+  suspend fun removeApks(apks: List<Apk>): Result<Unit> {
+    require(apks.isNotEmpty()) { "removeApks() apks must not be empty" }
 
-    val latestCommit = parsedCommits.first()
-    val apkUuid = ApkFileName.getUuid(
-      apkVersion,
-      latestCommit.commitHash
-    )
-
-    val findFileResult = fileSystem.findApkFileAsync(
-      serverSettings.apksDir.absolutePath,
-      apkUuid
-    )
-
-    if (findFileResult.isFailure) {
-      logger.error("findFileAsync() returned exception")
-      return Result.failure(findFileResult.exceptionOrNull()!!)
+    val getCommitsResult = commitsRepository.getHeadCommits(apks)
+    if (getCommitsResult.isFailure) {
+      logger.error("Couldn't get head commits")
+      return Result.failure(getCommitsResult.exceptionOrNull()!!)
     }
 
-    val filePath = findFileResult.getOrNull()
-      // Does not exist
-      ?: return Result.success(Unit)
+    val headCommits = getCommitsResult.getOrNull()!!
+      .associateBy { commit -> commit.apkUuid }
 
-    return fileSystem.removeFileAsync(filePath)
+    for (apk in apks) {
+      val headCommit = headCommits[apk.apkUuid]
+        ?: continue
+
+      check(apk.apkVersion == headCommit.apkVersion) {
+        "ApkVersions are not the same for apk and headCommit (${apk.apkVersion}, ${headCommit.apkVersion})"
+      }
+
+      val apkUuid = ApkFileName.getUuid(
+        headCommit.apkVersion,
+        headCommit.commitHash
+      )
+
+      val findFileResult = fileSystem.findApkFileAsync(
+        serverSettings.apksDir.absolutePath,
+        apkUuid
+      )
+
+      if (findFileResult.isFailure) {
+        logger.error("findFileAsync() returned exception")
+        return Result.failure(findFileResult.exceptionOrNull()!!)
+      }
+
+      val filePath = findFileResult.getOrNull()
+        // Does not exist
+        ?: continue
+
+      val removeResult = fileSystem.removeFileAsync(filePath)
+      if (removeResult.isFailure) {
+        logger.error("Error while trying to remove file from the disk, filePath = ${filePath}")
+        return Result.failure(removeResult.exceptionOrNull()!!)
+      }
+    }
+
+    return Result.success(Unit)
   }
 
   private fun getFullPath(apkVersion: Long, latestCommit: Commit, now: DateTime): Result<String> {

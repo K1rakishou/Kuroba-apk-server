@@ -17,7 +17,9 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import repository.NoNewCommitsLeftAfterFiltering
+import service.DeleteApkFullyService
 import service.FileHeaderChecker
+import service.OldApkRemoverService
 import util.TimeUtils
 import java.nio.file.Paths
 
@@ -29,6 +31,8 @@ open class UploadHandler : AbstractHandler() {
   private val commitPersister by inject<CommitPersister>()
   private val apkPersister by inject<ApkPersister>()
   private val timeUtils by inject<TimeUtils>()
+  private val oldApkRemover by inject<OldApkRemoverService>()
+  private val deleteApkFullyService by inject<DeleteApkFullyService>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
@@ -155,6 +159,8 @@ open class UploadHandler : AbstractHandler() {
       return Result.failure(storeResult.exceptionOrNull()!!)
     }
 
+    oldApkRemover.onNewApkUploaded()
+
     routingContext
       .response()
       .setStatusCode(200)
@@ -194,7 +200,7 @@ open class UploadHandler : AbstractHandler() {
         fileName
       ).toFile().absolutePath
 
-      apk = Apk(headCommit.apkUuid, fullPath, now)
+      apk = Apk(headCommit.apkUuid, apkVersion, fullPath, now)
 
       val insertApkResult = apksRepository.insertApks(listOf(apk))
       if (insertApkResult.isFailure) {
@@ -216,41 +222,10 @@ open class UploadHandler : AbstractHandler() {
 
       return Result.success(Unit)
     } catch (error: Throwable) {
-      // If one of these fails that means that the data is not consistent anymore so we can't do anything in such cause
-      // and we need to terminate the server
-
-      run {
-        val result = commitsRepository.removeCommits(commits)
-        if (result.isFailure) {
-          throw RuntimeException("Couldn't remove inserted commits after unknown error during storing",
-            result.exceptionOrNull()!!)
-        }
-      }
-
-      run {
-        apk?.let {
-          val result = apksRepository.removeApk(it)
-          if (result.isFailure) {
-            throw RuntimeException("Couldn't remove inserted apk after unknown error during storing",
-              result.exceptionOrNull()!!)
-          }
-        }
-      }
-
-      run {
-        val result = commitPersister.remove(apkVersion, commits)
-        if (result.isFailure) {
-          throw RuntimeException("Couldn't remove commits file from disk after unknown error during storing",
-            result.exceptionOrNull()!!)
-        }
-      }
-
-      run {
-        val result = apkPersister.remove(apkVersion, commits)
-        if (result.isFailure) {
-          throw RuntimeException("Couldn't remove apk file from disk after unknown error during storing",
-            result.exceptionOrNull()!!)
-        }
+      val deleteApkResult = apk?.let { apkToDelete -> deleteApkFullyService.deleteApks(listOf(apkToDelete)) }
+      if (deleteApkResult != null && deleteApkResult.isFailure) {
+        logger.error("Error while trying to fully delete an apk")
+        return Result.failure(deleteApkResult.exceptionOrNull()!!)
       }
 
       return Result.failure(error)
@@ -266,7 +241,7 @@ open class UploadHandler : AbstractHandler() {
         "max = ${ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE}"
       logger.error(message)
 
-      return Result.failure(CommitsFileIsTooBig())
+      return Result.failure(CommitsFileIsTooBig(message))
     }
 
     val readResult = fileSystem.readFileAsStringAsync(latestCommitsFile.uploadedFileName())
@@ -292,7 +267,7 @@ open class UploadHandler : AbstractHandler() {
     return Pair(apkFile, commitsFile)
   }
 
-  class CommitsFileIsTooBig : Exception("Commits file is too big")
+  class CommitsFileIsTooBig(message: String) : Exception(message)
 
   companion object {
     const val APK_FILE_NAME = "apk"

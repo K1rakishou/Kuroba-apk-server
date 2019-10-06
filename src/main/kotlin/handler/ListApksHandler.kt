@@ -51,10 +51,10 @@ open class ListApksHandler : AbstractHandler() {
       return null
     }
 
-    val page = calculatePage(routingContext, apksCount)
+    val currentPage = calculateCurrentPage(routingContext, apksCount)
     val pageOfApksResult = apksRepository.getApkListPaged(
-      page * COUNT_PER_PAGE_COUNT,
-      COUNT_PER_PAGE_COUNT
+      currentPage * serverSettings.listApksPerPageCount,
+      serverSettings.listApksPerPageCount
     )
 
     val pageOfApks = if (pageOfApksResult.isFailure) {
@@ -110,7 +110,7 @@ open class ListApksHandler : AbstractHandler() {
       }
       .sortedByDescending { apkInfo -> apkInfo.apkFileName.uploadedOn }
 
-    val html = buildIndexHtmlPage(apkInfoList, apksCount)
+    val html = buildIndexHtmlPage(apkInfoList, currentPage, apksCount)
 
     routingContext
       .response()
@@ -120,14 +120,14 @@ open class ListApksHandler : AbstractHandler() {
     return Result.success(Unit)
   }
 
-  private fun calculatePage(routingContext: RoutingContext, apksCount: Int): Int {
+  private fun calculateCurrentPage(routingContext: RoutingContext, apksCount: Int): Int {
     val pageParam = try {
       routingContext.pathParam(PAGE_PARAM)?.toInt() ?: 0
     } catch (error: Throwable) {
       0
     }
 
-    return pageParam.coerceIn(0, apksCount / COUNT_PER_PAGE_COUNT)
+    return pageParam.coerceIn(0, apksCount / serverSettings.listApksPerPageCount)
   }
 
   private suspend fun getFileSize(apkUuid: String): Long {
@@ -177,18 +177,18 @@ open class ListApksHandler : AbstractHandler() {
     return filteredCommits
   }
 
-  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfo>, apksCount: Int): String {
+  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfo>, currentPage: Int, apksCount: Int): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkInfoList, apksCount) }
+        body { createBody(apkInfoList, currentPage, apksCount) }
       }
 
       appendln()
     }
   }
 
-  private fun BODY.createBody(apkInfoList: List<ApkInfo>, apksCount: Int) {
+  private fun BODY.createBody(apkInfoList: List<ApkInfo>, currentPage: Int, apksCount: Int) {
     style {
       +indexPageCss
     }
@@ -215,12 +215,12 @@ open class ListApksHandler : AbstractHandler() {
               }
 
               val fileSizeStr = if (fileSize < 0) {
-                " ???B "
+                " ??? B "
               } else {
                 if (fileSize < 1024) {
-                  " ${fileSize}B "
+                  " $fileSize B "
                 } else {
-                  " ${fileSize / 1024}KB "
+                  " ${fileSize / 1024} KB "
                 }
               }
 
@@ -229,7 +229,7 @@ open class ListApksHandler : AbstractHandler() {
               val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
               +" Uploaded on ${time} "
 
-              if (index == 0) {
+              if (index == 0 && currentPage == 0) {
                 +" (LATEST)"
               }
 
@@ -247,15 +247,20 @@ open class ListApksHandler : AbstractHandler() {
           div {
             id = "pages"
 
-            val pagesCount = apksCount / COUNT_PER_PAGE_COUNT
-
+            val pagesCount = apksCount / serverSettings.listApksPerPageCount
             if (pagesCount <= 1) {
-              a("http://127.0.0.1:8080/apks/0") {
+              a("${serverSettings.baseUrl}/apks/0") {
                 +"0"
               }
             } else {
               for (page in 0 until pagesCount) {
-                a("http://127.0.0.1:8080/apks/$page") {
+                val classes = if (page == currentPage) {
+                  "active"
+                } else {
+                  null
+                }
+
+                a(classes = classes, href = "${serverSettings.baseUrl}/apks/$page") {
                   +page.toString()
                 }
               }
@@ -272,7 +277,6 @@ open class ListApksHandler : AbstractHandler() {
   )
 
   companion object {
-    private const val COUNT_PER_PAGE_COUNT = 100
     const val PAGE_PARAM = "page"
 
     private val UPLOAD_DATE_TIME_PRINTER = DateTimeFormatterBuilder()

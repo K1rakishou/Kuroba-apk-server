@@ -12,12 +12,13 @@ import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 
-class ServerVerticle : CoroutineVerticle(), KoinComponent {
+class ServerVerticle(
+  private val dispatcherProvider: DispatcherProvider
+) : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
 
   private val serverSettings by inject<ServerSettings>()
   private val mainInitializer by inject<MainInitializer>()
-  private val dispatcherProvider by inject<DispatcherProvider>()
 
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()

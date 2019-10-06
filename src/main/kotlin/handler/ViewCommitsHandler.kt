@@ -2,6 +2,7 @@ package handler
 
 import data.Commit
 import data.CommitFileName
+import extensions.getResourceFile
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
@@ -14,6 +15,7 @@ open class ViewCommitsHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ViewCommitsHandler::class.java)
 
   private val commitRepository by inject<CommitRepository>()
+  private val viewCommitsPageCss by lazy { getResourceFile("view_commits.css").readText() }
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New view commits request from ${routingContext.request().remoteAddress()}")
@@ -96,10 +98,18 @@ open class ViewCommitsHandler : AbstractHandler() {
   }
 
   private fun BODY.createBody(commits: List<Commit>) {
-    ul("list-style-type:disc;") {
-      for (commit in commits) {
-        li {
-          +commit.serializeToString()
+    style {
+      +viewCommitsPageCss
+    }
+
+    div {
+      id = "wrapper"
+
+      ul("list-style-type:disc;") {
+        for (commit in commits) {
+          li {
+            +commit.serializeToString()
+          }
         }
       }
     }

@@ -1,8 +1,10 @@
 package repository
 
+import data.Apk
 import data.ApkFileName
 import data.Commit
 import db.CommitTable
+import dispatchers.DispatcherProvider
 import extensions.selectFilterDuplicates
 import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,7 +14,9 @@ import org.jetbrains.exposed.sql.*
 import org.koin.core.inject
 import parser.CommitParser
 
-open class CommitRepository : BaseRepository() {
+open class CommitRepository(
+  dispatcherProvider: DispatcherProvider
+) : BaseRepository(dispatcherProvider) {
   private val logger = LoggerFactory.getLogger(CommitRepository::class.java)
   private val commitParser by inject<CommitParser>()
 
@@ -68,10 +72,7 @@ open class CommitRepository : BaseRepository() {
         .orderBy(CommitTable.committedAt, SortOrder.DESC)
         .limit(1)
         .firstOrNull()
-
-      if (resultRow == null) {
-        return@dbRead null
-      }
+        ?: return@dbRead null
 
       return@dbRead resultRow[CommitTable.hash]
     }
@@ -115,16 +116,14 @@ open class CommitRepository : BaseRepository() {
     }
   }
 
-  open suspend fun removeCommits(commits: List<Commit>): Result<Unit> {
-    require(commits.isNotEmpty()) { "removeCommits() commits must not be empty" }
+  open suspend fun removeCommitsByApkList(apks: List<Apk>): Result<Unit> {
+    require(apks.isNotEmpty()) { "removeCommitsByApkList() apks must not be empty" }
 
     return dbWrite {
-      val apkVersions = commits.map { commit -> commit.apkVersion }
-      val hashes = commits.map { commit -> commit.commitHash }
+      val apkUuidSet = apks.map { apk -> apk.apkUuid }.toSet()
 
       CommitTable.deleteWhere {
-        CommitTable.apkVersion.inList(apkVersions) and
-          CommitTable.hash.inList(hashes)
+        CommitTable.groupUuid.inList(apkUuidSet)
       }
 
       return@dbWrite
@@ -168,6 +167,18 @@ open class CommitRepository : BaseRepository() {
   suspend fun getCommitsCount(): Result<Int> {
     return dbRead {
       CommitTable.selectAll().count()
+    }
+  }
+
+  suspend fun getHeadCommits(apks: List<Apk>): Result<List<Commit>> {
+    return dbRead {
+      val apkUuidSet = apks.map { apk -> apk.apkUuid }.toSet()
+
+      return@dbRead CommitTable.select {
+        CommitTable.uuid.inList(apkUuidSet) and
+          CommitTable.head.eq(true)
+      }
+        .map { resultRow -> Commit.fromResultRow(resultRow) }
     }
   }
 

@@ -1,6 +1,7 @@
 package persister
 
 import ServerSettings
+import data.Apk
 import data.Commit
 import data.CommitFileName
 import fs.FileSystem
@@ -9,11 +10,13 @@ import io.vertx.core.logging.LoggerFactory
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import parser.CommitParser
+import repository.CommitRepository
 import java.nio.file.Paths
 
 open class CommitPersister : KoinComponent {
   private val logger = LoggerFactory.getLogger(CommitPersister::class.java)
 
+  private val commitsRepository by inject<CommitRepository>()
   private val commitParser by inject<CommitParser>()
   private val serverSettings by inject<ServerSettings>()
   private val fileSystem by inject<FileSystem>()
@@ -62,18 +65,42 @@ open class CommitPersister : KoinComponent {
     return Result.success(Unit)
   }
 
-  open suspend fun remove(apkVersion: Long, parsedCommits: List<Commit>): Result<Unit> {
-    require(parsedCommits.isNotEmpty()) { "remove() parsed commits must not be empty" }
+  suspend fun removeCommitsByApkList(apks: List<Apk>): Result<Unit> {
+    require(apks.isNotEmpty()) { "removeCommitsByApkList() apks must not be empty" }
 
-    val latestCommit = parsedCommits.first()
-    val getFullPathResult = getFullPath(apkVersion, latestCommit)
-
-    if (getFullPathResult.isFailure) {
-      logger.error("Couldn't get full path")
-      return Result.failure(getFullPathResult.exceptionOrNull()!!)
+    val getCommitsResult = commitsRepository.getHeadCommits(apks)
+    if (getCommitsResult.isFailure) {
+      logger.error("Couldn't get head commits")
+      return Result.failure(getCommitsResult.exceptionOrNull()!!)
     }
 
-    return fileSystem.removeFileAsync(getFullPathResult.getOrNull()!!)
+    val headCommits = getCommitsResult.getOrNull()!!
+      .associateBy { commit -> commit.apkUuid }
+    check(headCommits.isNotEmpty()) { "headCommits must not be empty" }
+
+    for (apk in apks) {
+      val headCommit = headCommits[apk.apkUuid]
+        ?: continue
+
+      check(apk.apkVersion == headCommit.apkVersion) {
+        "ApkVersions are not the same for apk and headCommit (${apk.apkVersion}, ${headCommit.apkVersion})"
+      }
+
+      val getFullPathResult = getFullPath(headCommit.apkVersion, headCommit)
+      if (getFullPathResult.isFailure) {
+        logger.error("Couldn't get full path")
+        return Result.failure(getFullPathResult.exceptionOrNull()!!)
+      }
+
+      val filePath = getFullPathResult.getOrNull()!!
+      val removeResult = fileSystem.removeFileAsync(filePath)
+      if (removeResult.isFailure) {
+        logger.error("Error while trying to remove file from the disk, filePath = ${filePath}")
+        return Result.failure(removeResult.exceptionOrNull()!!)
+      }
+    }
+
+    return Result.success(Unit)
   }
 
   private fun getFullPath(apkVersion: Long, latestCommit: Commit): Result<String> {

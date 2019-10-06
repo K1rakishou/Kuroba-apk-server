@@ -1,6 +1,7 @@
 import db.ApkTable
 import db.CommitTable
 import di.MainModule
+import dispatchers.RealDispatcherProvider
 import io.vertx.core.Vertx
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -21,12 +22,13 @@ fun main(args: Array<String>) {
 
   println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath")
   val database = initDatabase()
+  val dispatcherProvider = RealDispatcherProvider()
 
   startKoin {
-    modules(MainModule(vertx, database, baseUrl, File(apksDirPath), secretKey).createMainModule())
+    modules(MainModule(vertx, database, baseUrl, File(apksDirPath), secretKey, dispatcherProvider).createMainModule())
   }
 
-  vertx.deployVerticle(ServerVerticle()) { ar ->
+  vertx.deployVerticle(ServerVerticle(dispatcherProvider)) { ar ->
     if (ar.succeeded()) {
       println("Server started")
     } else {

@@ -7,12 +7,13 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import kotlin.system.measureTimeMillis
 
-open class MainInitializer : KoinComponent {
+open class MainInitializer(
+  private val dispatcherProvider: DispatcherProvider
+) : KoinComponent {
   private val logger = LoggerFactory.getLogger(MainInitializer::class.java)
 
   private val commitRepositoryInitializer by inject<CommitRepositoryInitializer>()
   private val apkRepositoryInitializer by inject<ApkRepositoryInitializer>()
-  private val dispatcherProvider by inject<DispatcherProvider>()
 
   open suspend fun initEverything(): Boolean {
     return withContext(dispatcherProvider.IO()) {

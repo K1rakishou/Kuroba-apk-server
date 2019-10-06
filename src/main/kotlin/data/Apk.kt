@@ -6,6 +6,7 @@ import org.joda.time.DateTime
 
 data class Apk(
   val apkUuid: String,
+  val apkVersion: Long,
   val apkFullPath: String,
   val uploadedOn: DateTime
 ) {
@@ -16,6 +17,7 @@ data class Apk(
     fun fromResultRow(resultRow: ResultRow): Apk {
       return Apk(
         resultRow[ApkTable.groupUuid],
+        resultRow[ApkTable.apkVersion],
         resultRow[ApkTable.apkFullPath],
         resultRow[ApkTable.uploadedOn]
       )
@@ -43,13 +45,15 @@ data class Apk(
 
   override fun hashCode(): Int {
     return 31 * apkUuid.hashCode() +
+      31 * apkVersion.hashCode() +
       31 * apkFullPath.hashCode()
   }
 
   override fun toString(): String {
     return String.format(
-      "uuid = %s, path = %s, uploadedOn = %s",
+      "uuid = %s, apkVersion = %d, path = %s, uploadedOn = %s",
       apkUuid,
+      apkVersion,
       apkFullPath,
       ApkFileName.APK_UPLOADED_ON_PRINTER.print(uploadedOn)
     )

@@ -80,6 +80,7 @@ open class ApkRepositoryInitializer : Initializer, KoinComponent {
 
       apkSet += Apk(
         commit.apkUuid,
+        commit.apkVersion,
         path,
         apkFileName.uploadedOn
       )
