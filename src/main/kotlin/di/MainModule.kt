@@ -79,6 +79,7 @@ class MainModule(
       single { ListApksHandler() }
       single { GetLatestUploadedCommitHashHandler() }
       single { ViewCommitsHandler() }
+      single { GetLatestApkHandler() }
     }
   }
 }

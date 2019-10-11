@@ -25,6 +25,7 @@ class ServerVerticle(
   private val getLatestUploadedCommitHashHandler by inject<GetLatestUploadedCommitHashHandler>()
   private val listApksHandler by inject<ListApksHandler>()
   private val viewCommitsHandler by inject<ViewCommitsHandler>()
+  private val getLatestApkHandler by inject<GetLatestApkHandler>()
 
   override suspend fun start() {
     super.start()
@@ -67,6 +68,9 @@ class ServerVerticle(
       }
       get("/apks/:${ListApksHandler.PAGE_PARAM}").handler { routingContext ->
         handle(routingContext) { listApksHandler.handle(routingContext) }
+      }
+      get("/latest_apk").handler { routingContext ->
+        handle(routingContext) { getLatestApkHandler.handle(routingContext) }
       }
     }
   }

@@ -58,6 +58,16 @@ open class ApkRepository(
     return dbRead { ApkTable.selectAll().count() }
   }
 
+  suspend fun getLatestApk(): Result<Apk?> {
+    return dbRead {
+      ApkTable.selectAll()
+        .orderBy(ApkTable.id, SortOrder.DESC)
+        .limit(1)
+        .firstOrNull()
+        ?.let { resultRow -> Apk.fromResultRow(resultRow) }
+    }
+  }
+
   suspend fun getOldestApks(count: Int): Result<List<Apk>> {
     return dbRead {
       ApkTable.selectAll()
