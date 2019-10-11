@@ -26,7 +26,19 @@ class GetLatestApkHandler : AbstractHandler() {
       return Result.failure(getLatestApkResult.exceptionOrNull()!!)
     }
 
-    val latestApk = getLatestApkResult.getOrNull()!!
+    val latestApk = getLatestApkResult.getOrNull()
+    if (latestApk == null) {
+      val message = "No apks uploaded yet"
+      logger.info(message)
+
+      sendResponse(
+        routingContext,
+        message,
+        HttpResponseStatus.OK
+      )
+
+      return null
+    }
 
     val fileExistsResult = fileSystem.fileExistsAsync(latestApk.apkFullPath)
     if (fileExistsResult.isFailure) {
