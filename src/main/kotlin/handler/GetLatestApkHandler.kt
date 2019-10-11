@@ -36,7 +36,7 @@ class GetLatestApkHandler : AbstractHandler() {
       sendResponse(
         routingContext,
         message,
-        HttpResponseStatus.OK
+        HttpResponseStatus.NOT_FOUND
       )
 
       return null
