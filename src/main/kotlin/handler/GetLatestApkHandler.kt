@@ -13,6 +13,8 @@ class GetLatestApkHandler : AbstractHandler() {
   private val apkRepository by inject<ApkRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
+    logger.info("New get latest apk request from ${routingContext.request().remoteAddress()}")
+
     val getLatestApkResult = apkRepository.getLatestApk()
     if (getLatestApkResult.isFailure) {
       logger.error("getLatestApk() returned exception")
