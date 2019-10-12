@@ -1,9 +1,8 @@
 package extensions
 
 import org.jetbrains.exposed.sql.*
-import java.io.File
 import java.lang.Byte.toUnsignedInt
-import java.nio.file.Paths
+import java.nio.charset.Charset
 
 fun ByteArray.toHex(): String {
   return joinToString("") {
@@ -31,7 +30,12 @@ fun <T> Table.selectFilterDuplicates(
   return originalList.filterDuplicates(possibleDuplicates)
 }
 
-fun getResourceFile(fileName: String): File {
-  val resourceDirectory = Paths.get("src", "main", "resources")
-  return File(resourceDirectory.toFile().absolutePath, fileName)
+fun getResourceString(clazz: Class<*>, fileName: String): String {
+  val resourceInputStream = checkNotNull(clazz.classLoader.getResourceAsStream(fileName)) {
+    "Couldn't get input stream for resource \"$fileName\""
+  }
+
+  return resourceInputStream.use { inStream ->
+    String(inStream.readAllBytes(), Charset.defaultCharset())
+  }
 }

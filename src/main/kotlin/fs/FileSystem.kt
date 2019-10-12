@@ -1,5 +1,6 @@
 package fs
 
+import data.ApkFileName.Companion.APK_EXTENSION
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import org.koin.core.KoinComponent
@@ -199,6 +200,6 @@ open class FileSystem : KoinComponent {
   }
 
   companion object {
-    private const val APK_NAME_REGEX_FORMAT = ".*(%s)_(\\d+)\\.apk"
+    private const val APK_NAME_REGEX_FORMAT = ".*(%s)_(\\d+)\\$APK_EXTENSION"
   }
 }

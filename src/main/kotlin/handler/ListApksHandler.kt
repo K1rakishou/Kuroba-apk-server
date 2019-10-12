@@ -2,7 +2,7 @@ package handler
 
 import data.ApkFileName
 import data.Commit
-import extensions.getResourceFile
+import extensions.getResourceString
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
@@ -18,7 +18,7 @@ open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
   private val commitsRepository by inject<CommitRepository>()
   private val apksRepository by inject<ApkRepository>()
-  private val indexPageCss by lazy { getResourceFile("index.css").readText() }
+  private val indexPageCss by lazy { getResourceString(ListApksHandler::class.java, "index.css") }
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New list apks request from ${routingContext.request().remoteAddress()}")

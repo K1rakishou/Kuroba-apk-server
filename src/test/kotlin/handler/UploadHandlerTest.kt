@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
 import data.Apk
 import data.ApkFileName
+import data.ApkFileName.Companion.APK_EXTENSION
 import data.Commit
 import data.CommitFileName
 import db.ApkTable
@@ -471,7 +472,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals("112233_8acb72611099915c81998776641606b1b47db583", apks.first().apkUuid)
           assertEquals(
             "F:\\projects\\java\\current\\kuroba-server\\src\\test\\resources\\test_dump\\" +
-              "112233_8acb72611099915c81998776641606b1b47db583_1570287894192", apks.first().apkFullPath
+              "112233_8acb72611099915c81998776641606b1b47db583_1570287894192.apk", apks.first().apkFullPath
           )
           assertEquals(1570287894192, apks.first().uploadedOn.millis)
         }
@@ -607,16 +608,21 @@ class UploadHandlerTest : AbstractHandlerTest() {
         }, { response ->
           assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
         }, {
-          assertEquals(count, commitsRepository.getCommitsCount().getOrNull()!!)
-          assertEquals(count, apksRepository.getTotalApksCount().getOrNull()!!)
+          val commits = commitsRepository.testGetAll().getOrNull()!!
+          val apks = apksRepository.testGetAll().getOrNull()!!
+
+          assertEquals(count, commits.size)
+          assertEquals(count, apks.size)
+
+          apks.forEach { apk -> assertTrue(apk.apkFullPath.endsWith(APK_EXTENSION)) }
 
           val allFiles = serverSettings.apksDir.listFiles()!!
           assertEquals((count * 2) + 1, allFiles.size) // Don't forget the "generated" directory
 
-          val apks = allFiles.filter { file -> file.name.endsWith(".apk") }
+          val apkFiles = allFiles.filter { file -> file.name.endsWith(".apk") }
           assertEquals(count, apks.size)
 
-          val commits = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
+          val commitFiles = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
           assertEquals(count, commits.size)
         }
       )
@@ -768,6 +774,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals(count / 2, apks.size)
           assertEquals(count / 2, commitsRepository.getCommitsCount().getOrNull()!!)
           assertEquals(count / 2, apksRepository.getTotalApksCount().getOrNull()!!)
+
+          apks.forEach { apk -> assertTrue(apk.apkFullPath.endsWith(APK_EXTENSION)) }
 
           val apkVersionByCommits = commits.map { it.apkVersion }
           val apkVersionByApks = apks.map { it.apkVersion }

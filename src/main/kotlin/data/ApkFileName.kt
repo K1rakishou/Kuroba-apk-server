@@ -20,6 +20,8 @@ data class ApkFileName private constructor(
   }
 
   companion object {
+    const val APK_EXTENSION = ".apk"
+
     // %d - apk version
     // %s - commit hash
     const val APK_UUID_FORMAT = "%d_%s"
@@ -28,8 +30,8 @@ data class ApkFileName private constructor(
     // %s - commit hash
     // second %d - time when the apk was uploaded to the server (time is local to the server)
     const val APK_FILE_FORMAT = "%d_%s_%d"
-    val APK_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_(\\d+)\\.apk")
-    val APK_FILE_NAME_NO_TIME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})\\.apk")
+    val APK_FILE_NAME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})_(\\d+)\\$APK_EXTENSION")
+    val APK_FILE_NAME_NO_TIME_PATTERN = Pattern.compile("(\\d+)_([0-9a-f]{5,40})\\$APK_EXTENSION")
     private val COMMIT_HASH_PATTERN = Pattern.compile("[0-9a-f]{5,40}")
 
     val APK_UPLOADED_ON_PRINTER = DateTimeFormatterBuilder()
@@ -39,6 +41,7 @@ data class ApkFileName private constructor(
       .appendTimeZoneOffset(null, true, 2, 2)
       .toFormatter()
 
+    // Formats apk file name WITHOUT the extension (.apk)
     fun formatFileName(apkVersion: Long, commitHash: String, now: DateTime): String {
       return String.format(
         APK_FILE_FORMAT,

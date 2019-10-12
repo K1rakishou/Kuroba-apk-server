@@ -5,6 +5,7 @@ import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
 import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import data.Apk
 import data.ApkFileName
+import data.ApkFileName.Companion.APK_EXTENSION
 import data.Commit
 import extensions.toHex
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -193,7 +194,7 @@ open class UploadHandler : AbstractHandler() {
         apkVersion,
         headCommit.commitHash,
         now
-      )
+      ) + APK_EXTENSION
 
       val fullPath = Paths.get(
         serverSettings.apksDir.absolutePath,

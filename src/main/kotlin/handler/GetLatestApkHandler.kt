@@ -58,7 +58,7 @@ class GetLatestApkHandler : AbstractHandler() {
     val apkFileName = ApkFileName.fromString(latestApk.apkFullPath)
     val readFileResult = fileSystem.readFileAsync(latestApk.apkFullPath)
     if (readFileResult.isFailure) {
-      logger.error("Error while reading file from the disk ")
+      logger.error("Error while reading file from the disk")
 
       sendResponse(
         routingContext,
