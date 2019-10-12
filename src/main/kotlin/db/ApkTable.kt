@@ -23,7 +23,7 @@ object ApkTable : Table("apk_table") {
   }
 
   object Index {
-    const val GROUP_UUID = "commit_group_uuid_index"
-    const val UPLOADED_ON = "uploaded_on_index"
+    const val GROUP_UUID = "apk_commit_group_uuid_index"
+    const val UPLOADED_ON = "apk_uploaded_on_index"
   }
 }

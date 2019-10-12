@@ -9,6 +9,7 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
+import io.vertx.ext.web.handler.FaviconHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
@@ -78,6 +79,7 @@ class ServerVerticle(
       get("/latest_apk_uuid").handler { routingContext ->
         handle(routingContext) { getLatestApkUuidHandler.handle(routingContext) }
       }
+      route("/favicon.ico").handler(FaviconHandler.create("favicon.ico"))
     }
   }
 

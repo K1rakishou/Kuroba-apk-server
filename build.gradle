@@ -29,6 +29,8 @@ dependencies {
     kapt 'com.squareup.moshi:moshi-kotlin-codegen:1.8.0'
     implementation 'com.squareup.moshi:moshi-kotlin:1.8.0'
 
+    implementation 'org.slf4j:slf4j-simple:1.7.28'
+
     testImplementation 'io.vertx:vertx-unit:3.8.1'
     testImplementation 'io.vertx:vertx-junit5:3.8.1'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.5.1'

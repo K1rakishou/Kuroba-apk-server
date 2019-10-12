@@ -25,7 +25,7 @@ object CommitTable : Table("commit_table") {
   object Index {
     const val GROUP_UUID = "commit_group_uuid_index"
     const val HASH = "commit_hash_index"
-    const val APK_VERSION = "apk_version_index"
-    const val COMMITTED_AT = "committed_at_index"
+    const val APK_VERSION = "commit_apk_version_index"
+    const val COMMITTED_AT = "commit_committed_at_index"
   }
 }

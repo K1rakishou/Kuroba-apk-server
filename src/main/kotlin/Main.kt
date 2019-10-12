@@ -7,14 +7,18 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
+import org.slf4j.impl.SimpleLogger
 import server.ServerVerticle
 import java.io.File
+
 
 fun main(args: Array<String>) {
   if (args.size != 3) {
     println("Not enough arguments! (base url, secret key and apks dir must be provided!)")
     return
   }
+
+  System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO")
 
   val vertx = Vertx.vertx()
   val baseUrl = args[0]
