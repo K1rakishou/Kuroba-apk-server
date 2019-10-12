@@ -620,10 +620,10 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals((count * 2) + 1, allFiles.size) // Don't forget the "generated" directory
 
           val apkFiles = allFiles.filter { file -> file.name.endsWith(".apk") }
-          assertEquals(count, apks.size)
+          assertEquals(count, apkFiles.size)
 
           val commitFiles = allFiles.filter { file -> file.name.endsWith("_commits.txt") }
-          assertEquals(count, commits.size)
+          assertEquals(count, commitFiles.size)
         }
       )
     }
