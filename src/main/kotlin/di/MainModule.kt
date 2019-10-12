@@ -1,6 +1,6 @@
 package di
 
-import ServerSettings
+import com.squareup.moshi.Moshi
 import dispatchers.DispatcherProvider
 import fs.FileSystem
 import handler.*
@@ -16,8 +16,10 @@ import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
+import server.ServerSettings
 import service.DeleteApkFullyService
 import service.FileHeaderChecker
+import service.JsonConverter
 import service.OldApkRemoverService
 import util.TimeUtils
 import java.io.File
@@ -41,6 +43,7 @@ class MainModule(
       single { CommitRepositoryInitializer() }
       single { ApkRepositoryInitializer() }
       single { MainInitializer(dispatcherProvider) }
+      single { Moshi.Builder().build() }
 
       single { TimeUtils() }
 
@@ -68,6 +71,7 @@ class MainModule(
       single { FileHeaderChecker() }
       single { OldApkRemoverService(dispatcherProvider) }
       single { DeleteApkFullyService() }
+      single { JsonConverter(get()) }
 
       // Persisters
       single { CommitPersister() }
@@ -80,6 +84,7 @@ class MainModule(
       single { GetLatestUploadedCommitHashHandler() }
       single { ViewCommitsHandler() }
       single { GetLatestApkHandler() }
+      single { GetLatestApkUuidHandler() }
     }
   }
 }

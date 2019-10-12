@@ -1,8 +1,5 @@
 package handler
 
-import ServerVerticle
-import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
-import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
 import data.Apk
@@ -40,6 +37,9 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito
+import server.ServerVerticle
+import server.ServerVerticle.Companion.APK_VERSION_HEADER_NAME
+import server.ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths

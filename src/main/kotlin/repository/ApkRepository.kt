@@ -48,7 +48,7 @@ open class ApkRepository(
   suspend fun getApkListPaged(from: Int, count: Int): Result<List<Apk>> {
     return dbRead {
       ApkTable.selectAll()
-        .orderBy(ApkTable.id, SortOrder.DESC)
+        .orderBy(ApkTable.uploadedOn, SortOrder.DESC)
         .limit(count, from)
         .map { resultRow -> Apk.fromResultRow(resultRow) }
     }
@@ -61,7 +61,7 @@ open class ApkRepository(
   suspend fun getLatestApk(): Result<Apk?> {
     return dbRead {
       ApkTable.selectAll()
-        .orderBy(ApkTable.id, SortOrder.DESC)
+        .orderBy(ApkTable.uploadedOn, SortOrder.DESC)
         .limit(1)
         .firstOrNull()
         ?.let { resultRow -> Apk.fromResultRow(resultRow) }
@@ -71,7 +71,7 @@ open class ApkRepository(
   suspend fun getOldestApks(count: Int): Result<List<Apk>> {
     return dbRead {
       ApkTable.selectAll()
-        .orderBy(ApkTable.id, SortOrder.ASC)
+        .orderBy(ApkTable.uploadedOn, SortOrder.ASC)
         .limit(count)
         .map { resultRow -> Apk.fromResultRow(resultRow) }
     }

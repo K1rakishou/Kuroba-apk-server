@@ -1,11 +1,11 @@
 package init
 
-import ServerSettings
 import data.Apk
 import data.ApkFileName
 import data.Commit
 import fs.FileSystem
 import io.vertx.core.logging.LoggerFactory
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -13,6 +13,7 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import repository.ApkRepository
 import repository.CommitRepository
+import server.ServerSettings
 
 open class ApkRepositoryInitializer : Initializer, KoinComponent {
   private val logger = LoggerFactory.getLogger(ApkRepositoryInitializer::class.java)
@@ -22,6 +23,7 @@ open class ApkRepositoryInitializer : Initializer, KoinComponent {
   private val commitRepository by inject<CommitRepository>()
   private val apkRepository by inject<ApkRepository>()
 
+  @ExperimentalCoroutinesApi
   override suspend fun init(): Result<Unit> {
     val result = kotlin.runCatching {
       var totalInserted = 0

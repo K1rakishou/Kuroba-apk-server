@@ -1,6 +1,5 @@
 package init
 
-import ServerSettings
 import data.ApkFileName
 import data.CommitFileName
 import fs.FileSystem
@@ -8,6 +7,7 @@ import io.vertx.core.logging.LoggerFactory
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import repository.CommitRepository
+import server.ServerSettings
 import java.io.File
 import java.nio.file.Paths
 
@@ -129,6 +129,7 @@ open class CommitRepositoryInitializer : Initializer, KoinComponent {
       }
     }
 
+    // Ascending order, because that's how we are receiving them from the CI server
     return resultFiles.sortedBy { (apkFileName, _) -> apkFileName.uploadedOn }
   }
 

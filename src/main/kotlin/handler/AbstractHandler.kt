@@ -1,12 +1,12 @@
 package handler
 
-import ServerSettings
 import fs.FileSystem
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.Vertx
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import server.ServerSettings
 
 abstract class AbstractHandler : KoinComponent {
   protected val vertx by inject<Vertx>()

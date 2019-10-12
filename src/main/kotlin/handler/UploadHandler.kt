@@ -1,8 +1,5 @@
 package handler
 
-import ServerVerticle
-import ServerVerticle.Companion.APK_VERSION_HEADER_NAME
-import ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import data.Apk
 import data.ApkFileName
 import data.ApkFileName.Companion.APK_EXTENSION
@@ -18,6 +15,9 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import repository.NoNewCommitsLeftAfterFiltering
+import server.ServerVerticle
+import server.ServerVerticle.Companion.APK_VERSION_HEADER_NAME
+import server.ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import service.DeleteApkFullyService
 import service.FileHeaderChecker
 import service.OldApkRemoverService
@@ -36,7 +36,7 @@ open class UploadHandler : AbstractHandler() {
   private val deleteApkFullyService by inject<DeleteApkFullyService>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
-    logger.info("New uploading request from ${routingContext.request().remoteAddress()}")
+    logger.info("New upload apk request from ${routingContext.request().remoteAddress()}")
 
     val apkVersionString = routingContext.request().getHeader(APK_VERSION_HEADER_NAME)
     if (apkVersionString.isNullOrEmpty()) {
@@ -66,7 +66,7 @@ open class UploadHandler : AbstractHandler() {
 
     val secretKey = routingContext.request().getHeader(SECRET_KEY_HEADER_NAME)
     if (secretKey != serverSettings.secretKey) {
-      logger.error("secretKey != providedSecretKey")
+      logger.error("secretKey != providedSecretKey, received secretKey = ${secretKey}")
 
       sendResponse(
         routingContext,
@@ -201,7 +201,12 @@ open class UploadHandler : AbstractHandler() {
         fileName
       ).toFile().absolutePath
 
-      apk = Apk(headCommit.apkUuid, apkVersion, fullPath, now)
+      apk = Apk(
+        headCommit.apkUuid,
+        apkVersion,
+        fullPath,
+        now
+      )
 
       val insertApkResult = apksRepository.insertApks(listOf(apk))
       if (insertApkResult.isFailure) {

@@ -1,3 +1,5 @@
+package server
+
 import java.io.File
 
 open class ServerSettings(

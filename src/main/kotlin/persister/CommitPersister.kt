@@ -1,6 +1,5 @@
 package persister
 
-import ServerSettings
 import data.Apk
 import data.Commit
 import data.CommitFileName
@@ -11,6 +10,7 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import parser.CommitParser
 import repository.CommitRepository
+import server.ServerSettings
 import java.nio.file.Paths
 
 open class CommitPersister : KoinComponent {

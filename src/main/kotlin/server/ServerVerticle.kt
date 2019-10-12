@@ -1,3 +1,5 @@
+package server
+
 import dispatchers.DispatcherProvider
 import handler.*
 import init.MainInitializer
@@ -26,6 +28,7 @@ class ServerVerticle(
   private val listApksHandler by inject<ListApksHandler>()
   private val viewCommitsHandler by inject<ViewCommitsHandler>()
   private val getLatestApkHandler by inject<GetLatestApkHandler>()
+  private val getLatestApkUuidHandler by inject<GetLatestApkUuidHandler>()
 
   override suspend fun start() {
     super.start()
@@ -72,6 +75,9 @@ class ServerVerticle(
       get("/latest_apk").handler { routingContext ->
         handle(routingContext) { getLatestApkHandler.handle(routingContext) }
       }
+      get("/latest_apk_uuid").handler { routingContext ->
+        handle(routingContext) { getLatestApkUuidHandler.handle(routingContext) }
+      }
     }
   }
 
@@ -96,8 +102,10 @@ class ServerVerticle(
           .end("Unknown server error")
 
         if (error is RuntimeException) {
-          // Crash the server whenever the RuntimeException is thrown
-          throw error
+          // Shutdown the server whenever the RuntimeException is thrown since this exception is fatal
+          vertx.close {
+            throw error
+          }
         } else {
           logger.fatal("Unhandled handler exception", error)
         }

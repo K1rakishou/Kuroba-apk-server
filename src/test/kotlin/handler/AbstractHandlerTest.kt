@@ -1,6 +1,5 @@
 package handler
 
-import ServerSettings
 import db.ApkTable
 import db.CommitTable
 import dispatchers.DispatcherProvider
@@ -21,6 +20,7 @@ import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
+import server.ServerSettings
 import service.DeleteApkFullyService
 import service.FileHeaderChecker
 import service.OldApkRemoverService

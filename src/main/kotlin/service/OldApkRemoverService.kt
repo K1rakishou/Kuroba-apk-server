@@ -1,6 +1,5 @@
 package service
 
-import ServerSettings
 import dispatchers.DispatcherProvider
 import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.CoroutineScope
@@ -12,6 +11,7 @@ import org.joda.time.Instant
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import repository.ApkRepository
+import server.ServerSettings
 import util.TimeUtils
 import kotlin.coroutines.CoroutineContext
 

@@ -1,7 +1,5 @@
 package persister
 
-import ServerSettings
-import ServerVerticle
 import data.Apk
 import data.ApkFileName
 import data.Commit
@@ -12,6 +10,8 @@ import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import repository.CommitRepository
+import server.ServerSettings
+import server.ServerVerticle
 import java.nio.file.Paths
 
 open class ApkPersister : KoinComponent {
