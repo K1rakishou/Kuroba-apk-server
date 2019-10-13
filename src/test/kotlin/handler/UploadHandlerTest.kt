@@ -20,6 +20,7 @@ import io.vertx.ext.web.codec.BodyCodec
 import io.vertx.ext.web.multipart.MultipartForm
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
@@ -47,6 +48,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 
 
+@ExperimentalCoroutinesApi
 @ExtendWith(VertxExtension::class)
 class UploadHandlerTest : AbstractHandlerTest() {
   private val APK_MIME_TYPE = "application/vnd.android.package-archive"
@@ -605,6 +607,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
         filesWithHeader, {
           doReturn(true).`when`(mainInitializer).initEverything()
           doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
+          doReturn(false).`when`(requestThrottler).shouldBeThrottled(anyString(), anyBoolean())
         }, { response ->
           assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
         }, {
@@ -737,6 +740,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
           doReturn(true).`when`(mainInitializer).initEverything()
           doReturn(count / 2).`when`(serverSettings).maxApkFiles
           doReturn(true).`when`(timeUtils).isItTimeToDeleteOldApks(anyOrNull(), anyOrNull())
+          doReturn(false).`when`(requestThrottler).shouldBeThrottled(anyString(), anyBoolean())
 
           doReturn(
             DateTime(1570376694000),
@@ -764,7 +768,6 @@ class UploadHandlerTest : AbstractHandlerTest() {
         }, { response ->
           assertEquals(HttpResponseStatus.OK.code(), response.statusCode())
         }, {
-          // Wait a little bit so that the files from the disk are deleted
           delay(25)
 
           val commits = commitsRepository.testGetAll().getOrNull()!!

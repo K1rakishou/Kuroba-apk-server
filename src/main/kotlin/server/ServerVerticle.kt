@@ -14,6 +14,8 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import service.RequestThrottler
+import java.net.SocketException
 
 class ServerVerticle(
   private val dispatcherProvider: DispatcherProvider
@@ -22,6 +24,7 @@ class ServerVerticle(
 
   private val serverSettings by inject<ServerSettings>()
   private val mainInitializer by inject<MainInitializer>()
+  private val requestThrottler by inject<RequestThrottler>()
 
   private val uploadHandler by inject<UploadHandler>()
   private val getApkHandler by inject<GetApkHandler>()
@@ -45,39 +48,49 @@ class ServerVerticle(
     vertx
       .createHttpServer()
       .requestHandler(initRouter())
-      .exceptionHandler { error -> logger.fatal("Unhandled exception", error) }
+      .exceptionHandler { error -> logUnhandledException(error) }
       .listen(8080)
+  }
+
+  private fun logUnhandledException(error: Throwable) {
+    if (error is SocketException && error.message?.contains("Connection reset") == true) {
+      // Do not spam the logs with "Connection reset" exceptions
+      logger.fatal("Connection reset by remote peer")
+      return
+    }
+
+    logger.fatal("Unhandled exception", error)
   }
 
   private fun initRouter(): Router {
     return Router.router(vertx).apply {
       post("/upload").handler(createBodyHandler())
       post("/upload").handler { routingContext ->
-        handle(routingContext) {
+        handle(true, routingContext) {
           routingContext.response().setChunked(true)
           uploadHandler.handle(routingContext)
         }
       }
       get("/apk/:${GetApkHandler.APK_NAME_PARAM}").handler { routingContext ->
-        handle(routingContext) { getApkHandler.handle(routingContext) }
+        handle(true, routingContext) { getApkHandler.handle(routingContext) }
       }
       get("/latest_commit_hash").handler { routingContext ->
-        handle(routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
+        handle(false, routingContext) { getLatestUploadedCommitHashHandler.handle(routingContext) }
       }
       get("/commits/:${ViewCommitsHandler.COMMIT_FILE_NAME_PARAM}").handler { routingContext ->
-        handle(routingContext) { viewCommitsHandler.handle(routingContext) }
+        handle(false, routingContext) { viewCommitsHandler.handle(routingContext) }
       }
       get("/").handler { routingContext ->
         routingContext.reroute(HttpMethod.GET, "/apks/0")
       }
       get("/apks/:${ListApksHandler.PAGE_PARAM}").handler { routingContext ->
-        handle(routingContext) { listApksHandler.handle(routingContext) }
+        handle(false, routingContext) { listApksHandler.handle(routingContext) }
       }
       get("/latest_apk").handler { routingContext ->
-        handle(routingContext) { getLatestApkHandler.handle(routingContext) }
+        handle(true, routingContext) { getLatestApkHandler.handle(routingContext) }
       }
       get("/latest_apk_uuid").handler { routingContext ->
-        handle(routingContext) { getLatestApkUuidHandler.handle(routingContext) }
+        handle(false, routingContext) { getLatestApkUuidHandler.handle(routingContext) }
       }
       route("/favicon.ico").handler(FaviconHandler.create("favicon.ico"))
     }
@@ -90,9 +103,13 @@ class ServerVerticle(
       .setBodyLimit(MAX_APK_FILE_SIZE)
   }
 
-  private fun handle(routingContext: RoutingContext, func: suspend () -> Result<Unit>?) {
+  private fun handle(isSlowRequest: Boolean, routingContext: RoutingContext, func: suspend () -> Result<Unit>?) {
     launch(dispatcherProvider.IO()) {
       try {
+        if (throttleRequestIfNeeded(routingContext, isSlowRequest)) {
+          return@launch
+        }
+
         val result = func()
         if (result != null && result.isFailure) {
           logger.error("Handler error", result.exceptionOrNull()!!)
@@ -113,6 +130,31 @@ class ServerVerticle(
         }
       }
     }
+  }
+
+  /**
+   * @return true if the request was throttled
+   * */
+  private suspend fun throttleRequestIfNeeded(
+    routingContext: RoutingContext,
+    isSlowRequest: Boolean
+  ): Boolean {
+    val remoteVisitorAddress = checkNotNull(routingContext.request().remoteAddress().host()) {
+      "Remote address is null"
+    }
+
+    if (requestThrottler.shouldBeThrottled(remoteVisitorAddress, isSlowRequest)) {
+      val banTime = requestThrottler.getLeftBanTime(remoteVisitorAddress)
+
+      routingContext
+        .response()
+        .setStatusCode(HttpResponseStatus.TOO_MANY_REQUESTS.code())
+        .end("Hold your horses! You are sending requests way too fast! Yoo will have to wait for ${banTime}ms")
+
+      return true
+    }
+
+    return false
   }
 
   companion object {

@@ -24,6 +24,7 @@ import server.ServerSettings
 import service.DeleteApkFullyService
 import service.FileHeaderChecker
 import service.OldApkRemoverService
+import service.RequestThrottler
 import util.TimeUtils
 import java.io.File
 
@@ -49,6 +50,7 @@ abstract class AbstractHandlerTest {
   protected lateinit var viewCommitsHandler: ViewCommitsHandler
   protected lateinit var deleteApkFullyService: DeleteApkFullyService
   protected lateinit var oldApkRemoverService: OldApkRemoverService
+  protected lateinit var requestThrottler: RequestThrottler
 
   protected fun getModule(vertx: Vertx, database: Database, dispatcherProvider: DispatcherProvider): Module = module {
     timeUtils = Mockito.spy(TimeUtils())
@@ -78,6 +80,7 @@ abstract class AbstractHandlerTest {
     ListApksHandler = Mockito.spy(ListApksHandler())
     getLatestUploadedCommitHashHandler = Mockito.spy(GetLatestUploadedCommitHashHandler())
     viewCommitsHandler = Mockito.spy(ViewCommitsHandler())
+    requestThrottler = Mockito.spy(RequestThrottler(dispatcherProvider, serverSettings))
 
     single { timeUtils }
     single { vertx }
@@ -107,6 +110,7 @@ abstract class AbstractHandlerTest {
     single { apkPersister }
     single { oldApkRemoverService }
     single { deleteApkFullyService }
+    single { requestThrottler }
 
     // Handlers
     single { uploadHandler }

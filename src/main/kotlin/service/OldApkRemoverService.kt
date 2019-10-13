@@ -25,7 +25,9 @@ open class OldApkRemoverService(
   private val serverSettings by inject<ServerSettings>()
   private val deleteApkFullyService by inject<DeleteApkFullyService>()
   private val timeUtils by inject<TimeUtils>()
-  private val apksToDeleteCount by lazy { ((serverSettings.maxApkFiles.toFloat() / 100f) * 10f).toInt() } // Delete 10% of the apks
+
+  // Delete 10% of the apks
+  private val apksToDeleteCount by lazy { ((serverSettings.maxApkFiles.toFloat() / 100f) * 10f).toInt() }
 
   override val coroutineContext: CoroutineContext
     get() = job + dispatcherProvider.APK_REMOVER()
@@ -49,6 +51,8 @@ open class OldApkRemoverService(
       lastTimeCheck = now
       deleteOldApksIfThereAreAny()
     }
+
+    logger.warn("OldApkRemoverService actor was terminated!")
   }
 
   open suspend fun onNewApkUploaded() {
@@ -69,7 +73,10 @@ open class OldApkRemoverService(
         return
       }
 
-      logger.info("apksCount = ${apksCount}, maxApkFiles = ${serverSettings.maxApkFiles}, apksToDeleteCount = $apksToDeleteCount")
+      logger.info("apksCount = ${apksCount}," +
+        " maxApkFiles = ${serverSettings.maxApkFiles}," +
+        " apksToDeleteCount = $apksToDeleteCount")
+
       val oldestApksResult = apkRepository.getOldestApks(apksToDeleteCount)
       if (oldestApksResult.isFailure) {
         logger.error("Couldn't get oldest apks", oldestApksResult.exceptionOrNull()!!)

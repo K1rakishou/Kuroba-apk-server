@@ -17,10 +17,7 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import server.ServerSettings
-import service.DeleteApkFullyService
-import service.FileHeaderChecker
-import service.JsonConverter
-import service.OldApkRemoverService
+import service.*
 import util.TimeUtils
 import java.io.File
 
@@ -51,8 +48,7 @@ class MainModule(
         ServerSettings(
           baseUrl = baseUrl,
           apksDir = apksDir,
-          secretKey = secretKey,
-          apkName = "kuroba-dev"
+          secretKey = secretKey
         )
       }
 
@@ -72,6 +68,7 @@ class MainModule(
       single { OldApkRemoverService(dispatcherProvider) }
       single { DeleteApkFullyService() }
       single { JsonConverter(get()) }
+      single { RequestThrottler(dispatcherProvider, get()) }
 
       // Persisters
       single { CommitPersister() }
