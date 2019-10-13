@@ -296,8 +296,8 @@ open class ListApksHandler : AbstractHandler() {
     }
 
     val formattedSize = when {
-      sizeDiff < 0.01f -> "+<0.01%"
-      sizeDiff > -0.01f -> "-<0.01%"
+      sizeDiff > 0f && sizeDiff < 0.01f -> "+<0.01%"
+      sizeDiff < 0f && sizeDiff > -0.01f -> "-<0.01%"
       else -> {
         var res = String.format("%s%%", FILE_SIZE_FORMAT.format(sizeDiff))
         if (sizeDiff > 0f) {
