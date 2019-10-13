@@ -6,12 +6,12 @@ import data.Commit
 import db.CommitTable
 import dispatchers.DispatcherProvider
 import extensions.selectFilterDuplicates
-import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import org.jetbrains.exposed.sql.*
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import parser.CommitParser
 
 open class CommitRepository(

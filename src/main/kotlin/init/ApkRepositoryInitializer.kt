@@ -4,13 +4,13 @@ import data.Apk
 import data.ApkFileName
 import data.Commit
 import fs.FileSystem
-import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import repository.CommitRepository
 import server.ServerSettings

@@ -5,9 +5,9 @@ import data.Commit
 import data.CommitFileName
 import fs.FileSystem
 import io.vertx.core.buffer.Buffer
-import io.vertx.core.logging.LoggerFactory
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import parser.CommitParser
 import repository.CommitRepository
 import server.ServerSettings

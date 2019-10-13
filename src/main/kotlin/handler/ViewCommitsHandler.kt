@@ -4,11 +4,11 @@ import data.Commit
 import data.CommitFileName
 import extensions.getResourceString
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.CommitRepository
 
 open class ViewCommitsHandler : AbstractHandler() {

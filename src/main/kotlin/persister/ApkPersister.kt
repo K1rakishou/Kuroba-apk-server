@@ -4,11 +4,11 @@ import data.Apk
 import data.ApkFileName
 import data.Commit
 import fs.FileSystem
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.FileUpload
 import org.joda.time.DateTime
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.CommitRepository
 import server.ServerSettings
 import server.ServerVerticle

@@ -3,9 +3,9 @@ package init
 import data.ApkFileName
 import data.CommitFileName
 import fs.FileSystem
-import io.vertx.core.logging.LoggerFactory
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.CommitRepository
 import server.ServerSettings
 import java.io.File

@@ -2,9 +2,9 @@ package handler
 
 import data.ApkFileName
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.ApkRepository
 
 class GetLatestApkHandler : AbstractHandler() {

@@ -1,9 +1,9 @@
 package service
 
 import data.Apk
-import io.vertx.core.logging.LoggerFactory
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository

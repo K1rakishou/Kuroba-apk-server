@@ -3,13 +3,13 @@ package handler
 import data.ApkFileName
 import extensions.getResourceString
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.joda.time.format.DateTimeFormatterBuilder
 import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import repository.CommitRepository
 import java.text.DecimalFormat
@@ -136,7 +136,7 @@ open class ListApksHandler : AbstractHandler() {
       val currentApkInfo = sortedApks[index]
 
       val bigger = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize)
-      val diff = (prevApkInfoWithSizeDiff.apkInfo.fileSize - currentApkInfo.fileSize) / (bigger / 100f)
+      val diff = ((prevApkInfoWithSizeDiff.apkInfo.fileSize - currentApkInfo.fileSize) / (bigger / 100f)) * -1f
 
       val currentApkInfoWithSizeDiff = ApkInfoWithSizeDiff(currentApkInfo, diff)
       resultList.add(0, currentApkInfoWithSizeDiff)
@@ -300,9 +300,9 @@ open class ListApksHandler : AbstractHandler() {
       sizeDiff < 0f && sizeDiff > -0.01f -> "-<0.01%"
       else -> {
         var res = String.format("%s%%", FILE_SIZE_FORMAT.format(sizeDiff))
-        if (sizeDiff > 0f) {
+        if (sizeDiff > 0f && res[0] != '+') {
           res = "+$res"
-        } else if (sizeDiff < 0f) {
+        } else if (sizeDiff < 0f && res[0] != '-') {
           res = "-$res"
         }
 

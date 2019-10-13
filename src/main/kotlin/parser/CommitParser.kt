@@ -1,8 +1,8 @@
 package parser
 
 import data.Commit
-import io.vertx.core.logging.LoggerFactory
 import org.joda.time.DateTime
+import org.slf4j.LoggerFactory
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.regex.Pattern
 

@@ -2,8 +2,8 @@ package handler
 
 import data.ApkFileName
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.RoutingContext
+import org.slf4j.LoggerFactory
 
 open class GetApkHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)

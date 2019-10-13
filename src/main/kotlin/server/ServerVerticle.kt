@@ -5,7 +5,6 @@ import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.http.HttpMethod
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
@@ -14,6 +13,7 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import service.RequestThrottler
 import java.net.SocketException
 
@@ -55,11 +55,11 @@ class ServerVerticle(
   private fun logUnhandledException(error: Throwable) {
     if (error is SocketException && error.message?.contains("Connection reset") == true) {
       // Do not spam the logs with "Connection reset" exceptions
-      logger.fatal("Connection reset by remote peer")
+      logger.error("Connection reset by remote peer")
       return
     }
 
-    logger.fatal("Unhandled exception", error)
+    logger.error("Unhandled exception", error)
   }
 
   private fun initRouter(): Router {
@@ -126,7 +126,7 @@ class ServerVerticle(
             throw error
           }
         } else {
-          logger.fatal("Unhandled handler exception", error)
+          logger.error("Unhandled handler exception", error)
         }
       }
     }

@@ -1,7 +1,6 @@
 package service
 
 import dispatchers.DispatcherProvider
-import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -10,6 +9,7 @@ import kotlinx.coroutines.isActive
 import org.joda.time.Instant
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import server.ServerSettings
 import util.TimeUtils

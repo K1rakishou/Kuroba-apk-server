@@ -4,8 +4,8 @@ import data.Apk
 import db.ApkTable
 import dispatchers.DispatcherProvider
 import extensions.selectFilterDuplicates
-import io.vertx.core.logging.LoggerFactory
 import org.jetbrains.exposed.sql.*
+import org.slf4j.LoggerFactory
 
 open class ApkRepository(
   dispatcherProvider: DispatcherProvider
