@@ -71,6 +71,8 @@ open class RequestThrottler(
         ++remoteVisitor.slowRequestsCount
 
         if (remoteVisitor.slowRequestsCount > serverSettings.throttlerSettings.maxSlowRequestsPerCheck) {
+          logger.info("Banning $remoteVisitorAddress for slowRequests exceeding")
+
           remoteVisitor.banDuration = serverSettings.throttlerSettings.slowRequestsExceededBanTime
           banned = true
         }
@@ -78,6 +80,8 @@ open class RequestThrottler(
         ++remoteVisitor.fastRequestsCount
 
         if (remoteVisitor.fastRequestsCount > serverSettings.throttlerSettings.maxFastRequestsPerCheck) {
+          logger.info("Banning $remoteVisitorAddress for fastRequests exceeding")
+
           remoteVisitor.banDuration = serverSettings.throttlerSettings.fastRequestsExceededBanTime
           banned = true
         }
