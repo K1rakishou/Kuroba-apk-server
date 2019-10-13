@@ -132,7 +132,7 @@ open class RequestThrottler(
 
       try {
         if (remoteVisitorsMap.size < AMOUNT_OF_VISITORS_TO_START_REMOVING) {
-          logger.info("Too few visitors to start removing anything")
+          logger.info("Too few visitors (${remoteVisitorsMap.size}/${AMOUNT_OF_VISITORS_TO_START_REMOVING}) to start removing anything")
           return
         }
 
