@@ -80,7 +80,7 @@ open class ViewCommitsHandler : AbstractHandler() {
 
     routingContext
       .response()
-      .setStatusCode(200)
+      .setStatusCode(HttpResponseStatus.OK.code())
       .end(html)
 
     return Result.success(Unit)

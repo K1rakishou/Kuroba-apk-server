@@ -85,7 +85,7 @@ open class GetApkHandler : AbstractHandler() {
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
       .setChunked(true)
       .write(readFileResult.getOrNull()!!)
-      .setStatusCode(200)
+      .setStatusCode(HttpResponseStatus.OK.code())
       .end()
 
     return Result.success(Unit)
@@ -96,4 +96,5 @@ open class GetApkHandler : AbstractHandler() {
   }
 }
 
-class FileDoesNotExist(apksPath: String, apkUuid: String) : Exception("Apk with uuid ${apkUuid} does not exist in directory ${apksPath}")
+class FileDoesNotExist(apksPath: String, apkUuid: String)
+  : Exception("Apk with uuid ${apkUuid} does not exist in directory ${apksPath}")

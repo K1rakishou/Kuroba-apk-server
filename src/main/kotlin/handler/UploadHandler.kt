@@ -164,7 +164,7 @@ open class UploadHandler : AbstractHandler() {
 
     routingContext
       .response()
-      .setStatusCode(200)
+      .setStatusCode(HttpResponseStatus.OK.code())
       .end("Uploaded apk with version code $apkVersionString")
 
     return Result.success(Unit)

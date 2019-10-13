@@ -30,7 +30,7 @@ open class GetLatestUploadedCommitHashHandler : AbstractHandler() {
 
     routingContext
       .response()
-      .setStatusCode(200)
+      .setStatusCode(HttpResponseStatus.OK.code())
       .end(latestCommitHash)
 
     return Result.success(Unit)

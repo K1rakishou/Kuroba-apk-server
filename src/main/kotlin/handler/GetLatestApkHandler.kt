@@ -87,7 +87,7 @@ class GetLatestApkHandler : AbstractHandler() {
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
       .setChunked(true)
       .write(readFileResult.getOrNull()!!)
-      .setStatusCode(200)
+      .setStatusCode(HttpResponseStatus.OK.code())
       .end()
 
     return Result.success(Unit)
