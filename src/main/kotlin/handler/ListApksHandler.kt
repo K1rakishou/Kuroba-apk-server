@@ -1,7 +1,6 @@
 package handler
 
 import data.ApkFileName
-import data.Commit
 import extensions.getResourceString
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.logging.LoggerFactory
@@ -136,8 +135,8 @@ open class ListApksHandler : AbstractHandler() {
     for (index in sortedApks.size - 1 downTo 0) {
       val currentApkInfo = sortedApks[index]
 
-      val onePercent = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize) / 100f
-      val diff = onePercent * (currentApkInfo.fileSize - prevApkInfoWithSizeDiff.apkInfo.fileSize)
+      val bigger = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize)
+      val diff = (prevApkInfoWithSizeDiff.apkInfo.fileSize - currentApkInfo.fileSize) / (bigger / 100f)
 
       val currentApkInfoWithSizeDiff = ApkInfoWithSizeDiff(currentApkInfo, diff)
       resultList.add(0, currentApkInfoWithSizeDiff)
@@ -182,27 +181,6 @@ open class ListApksHandler : AbstractHandler() {
 
     logger.error("Error while trying to get size of the file with uuid ${apkUuid}")
     return -1
-  }
-
-  private suspend fun filterBadCommitResults(apkFileNames: List<ApkFileName>): HashMap<ApkFileName, List<Commit>> {
-    val commits = apkFileNames.associateWith { apkName ->
-      commitsRepository.getCommitsByApkVersion(apkName)
-    }
-
-    val filteredCommits = HashMap<ApkFileName, List<Commit>>(commits.size / 2)
-    for ((apkName, getCommitResult) in commits) {
-      if (getCommitResult.isFailure) {
-        logger.error(
-          "Error while trying to get commits by apk version, " +
-            "apkName = $apkName", getCommitResult.exceptionOrNull()
-        )
-        continue
-      }
-
-      filteredCommits[apkName] = getCommitResult.getOrNull()!!
-    }
-
-    return filteredCommits
   }
 
   private fun buildIndexHtmlPage(apkInfoList: List<ApkInfoWithSizeDiff>, currentPage: Int, apksCount: Int): String {
@@ -317,9 +295,19 @@ open class ListApksHandler : AbstractHandler() {
       "${fileSize / 1024} KB"
     }
 
-    var formattedSize = String.format("%s%%", FILE_SIZE_FORMAT.format(sizeDiff))
-    if (sizeDiff > 0f) {
-      formattedSize = "+$formattedSize"
+    val formattedSize = when {
+      sizeDiff < 0.01f -> "+<0.01%"
+      sizeDiff > -0.01f -> "-<0.01%"
+      else -> {
+        var res = String.format("%s%%", FILE_SIZE_FORMAT.format(sizeDiff))
+        if (sizeDiff > 0f) {
+          res = "+$res"
+        } else if (sizeDiff < 0f) {
+          res = "-$res"
+        }
+
+        res
+      }
     }
 
     return String.format(" %s (%s) ", sizeString, formattedSize)
@@ -338,12 +326,14 @@ open class ListApksHandler : AbstractHandler() {
   companion object {
     const val PAGE_PARAM = "page"
 
-    private val FILE_SIZE_FORMAT = DecimalFormat("#######.###")
+    private val FILE_SIZE_FORMAT = DecimalFormat("######.###")
 
     private val UPLOAD_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
       .append(ISODateTimeFormat.date())
       .appendLiteral(' ')
       .append(ISODateTimeFormat.hourMinuteSecond())
+      .appendLiteral(" UTC")
       .toFormatter()
+      .withZoneUTC()
   }
 }

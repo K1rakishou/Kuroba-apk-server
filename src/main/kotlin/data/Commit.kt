@@ -82,10 +82,11 @@ data class Commit(
     val COMMIT_DATE_TIME_PARSER = ISODateTimeFormat.dateTimeParser()
     val COMMIT_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
       .append(ISODateTimeFormat.date())
-      .appendLiteral('T')
+      .appendLiteral(' ')
       .append(ISODateTimeFormat.hourMinuteSecond())
-      .appendTimeZoneOffset(null, true, 2, 2)
+      .appendLiteral(" UTC")
       .toFormatter()
+      .withZoneUTC()
 
     fun fromResultRow(resultRow: ResultRow): Commit {
       return Commit(
