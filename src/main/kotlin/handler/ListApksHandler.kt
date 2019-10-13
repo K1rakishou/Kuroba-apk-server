@@ -13,6 +13,8 @@ import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
 import repository.ApkRepository
 import repository.CommitRepository
+import java.text.DecimalFormat
+import kotlin.math.max
 
 open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
@@ -87,21 +89,26 @@ open class ListApksHandler : AbstractHandler() {
       return null
     }
 
-    val filteredCommits = filterBadCommitResults(apkNames)
-    if (filteredCommits.isEmpty()) {
-      val message = "No apks left after filtering bad apk names"
-      logger.info(message)
+    val html = buildIndexHtmlPage(
+      buildApkInfoList(apkNames),
+      currentPage,
+      apksCount
+    )
 
-      sendResponse(
-        routingContext,
-        message,
-        HttpResponseStatus.OK
-      )
+    routingContext
+      .response()
+      .setStatusCode(HttpResponseStatus.OK.code())
+      .end(html)
 
-      return null
+    return Result.success(Unit)
+  }
+
+  private suspend fun buildApkInfoList(apkNames: List<ApkFileName>): List<ApkInfoWithSizeDiff> {
+    if (apkNames.isEmpty()) {
+      return emptyList()
     }
 
-    val apkInfoList = apkNames
+    val sortedApks = apkNames
       .map { apkName ->
         val fileSize = getFileSize(apkName.getUuid())
         check(fileSize > 0L) { "File size must be greater than zero" }
@@ -110,14 +117,35 @@ open class ListApksHandler : AbstractHandler() {
       }
       .sortedByDescending { apkInfo -> apkInfo.apkFileName.uploadedOn }
 
-    val html = buildIndexHtmlPage(apkInfoList, currentPage, apksCount)
+    check(sortedApks.isNotEmpty()) { "sortedApks is empty!" }
 
-    routingContext
-      .response()
-      .setStatusCode(HttpResponseStatus.OK.code())
-      .end(html)
+    if (sortedApks.size < 2) {
+      return listOf(
+        ApkInfoWithSizeDiff(sortedApks.first(), 0f)
+      )
+    }
 
-    return Result.success(Unit)
+    val resultList = mutableListOf<ApkInfoWithSizeDiff>()
+    var prevApkInfoWithSizeDiff = ApkInfoWithSizeDiff(
+      sortedApks.first(),
+      0f
+    )
+
+    resultList.add(0, prevApkInfoWithSizeDiff)
+
+    for (index in sortedApks.size - 1 downTo 0) {
+      val currentApkInfo = sortedApks[index]
+
+      val onePercent = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize) / 100f
+      val diff = onePercent * (currentApkInfo.fileSize - prevApkInfoWithSizeDiff.apkInfo.fileSize)
+
+      val currentApkInfoWithSizeDiff = ApkInfoWithSizeDiff(currentApkInfo, diff)
+      resultList.add(0, currentApkInfoWithSizeDiff)
+
+      prevApkInfoWithSizeDiff = currentApkInfoWithSizeDiff
+    }
+
+    return resultList
   }
 
   private fun calculateCurrentPage(routingContext: RoutingContext, apksCount: Int): Int {
@@ -177,7 +205,7 @@ open class ListApksHandler : AbstractHandler() {
     return filteredCommits
   }
 
-  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfo>, currentPage: Int, apksCount: Int): String {
+  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfoWithSizeDiff>, currentPage: Int, apksCount: Int): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
@@ -188,7 +216,7 @@ open class ListApksHandler : AbstractHandler() {
     }
   }
 
-  private fun BODY.createBody(apkInfoList: List<ApkInfo>, currentPage: Int, apksCount: Int) {
+  private fun BODY.createBody(apkInfoList: List<ApkInfoWithSizeDiff>, currentPage: Int, apksCount: Int) {
     style {
       +indexPageCss
     }
@@ -202,44 +230,7 @@ open class ListApksHandler : AbstractHandler() {
         div {
           id = "inner"
 
-          for ((index, apkInfo) in apkInfoList.withIndex()) {
-            val apkName = apkInfo.apkFileName
-            val fileSize = apkInfo.fileSize
-
-            val fullApkNameFile = apkName.getUuid() + ".apk"
-            val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
-
-            p {
-              a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
-                +"${serverSettings.apkName}-${fullApkNameFile}"
-              }
-
-              val fileSizeStr = if (fileSize < 0) {
-                " ??? B "
-              } else {
-                if (fileSize < 1024) {
-                  " $fileSize B "
-                } else {
-                  " ${fileSize / 1024} KB "
-                }
-              }
-
-              +fileSizeStr
-
-              val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
-              +" Uploaded on ${time} "
-
-              if (index == 0 && currentPage == 0) {
-                +" (LATEST)"
-              }
-
-              br {
-                a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
-                  +"[View commits]"
-                }
-              }
-            }
-          }
+          showApks(apkInfoList, currentPage)
         }
         div {
           id = "bottom"
@@ -247,29 +238,97 @@ open class ListApksHandler : AbstractHandler() {
           div {
             id = "pages"
 
-            val pagesCount = apksCount / serverSettings.listApksPerPageCount
-            if (pagesCount <= 1) {
-              a("${serverSettings.baseUrl}/apks/0") {
-                +"0"
-              }
-            } else {
-              for (page in 0 until pagesCount) {
-                val classes = if (page == currentPage) {
-                  "active"
-                } else {
-                  null
-                }
-
-                a(classes = classes, href = "${serverSettings.baseUrl}/apks/$page") {
-                  +page.toString()
-                }
-              }
-            }
+            showPages(apksCount, currentPage)
           }
         }
       }
     }
   }
+
+  private fun DIV.showPages(apksCount: Int, currentPage: Int) {
+    val pagesCount = apksCount / serverSettings.listApksPerPageCount
+    if (pagesCount > 1) {
+      for (page in 0 until pagesCount) {
+        val classes = if (page == currentPage) {
+          "active"
+        } else {
+          null
+        }
+
+        a(classes = classes, href = "${serverSettings.baseUrl}/apks/$page") {
+          +page.toString()
+        }
+      }
+    }
+  }
+
+  private fun DIV.showApks(
+    apkInfoList: List<ApkInfoWithSizeDiff>,
+    currentPage: Int
+  ) {
+    require(apkInfoList.isNotEmpty()) { "apkInfoList is empty!" }
+
+    val range = if (apkInfoList.size == 1) {
+      (apkInfoList.indices)
+    } else {
+      (0 until apkInfoList.size - 1)
+    }
+
+    for (index in range) {
+      val apkInfoWithDiffSize = apkInfoList[index]
+      val apkInfo = apkInfoWithDiffSize.apkInfo
+      val apkName = apkInfo.apkFileName
+      val fileSize = apkInfo.fileSize
+
+      val fullApkNameFile = apkName.getUuid() + ".apk"
+      val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
+
+      p {
+        a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
+          +"${serverSettings.apkName}-${fullApkNameFile}"
+        }
+
+        +buildFileSizeStr(fileSize, apkInfoWithDiffSize.sizeDiff)
+
+        val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
+        +" Uploaded on ${time} "
+
+        if (index == 0 && currentPage == 0) {
+          +" (LATEST)"
+        }
+
+        br {
+          a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
+            +"[View commits]"
+          }
+        }
+      }
+    }
+  }
+
+  private fun buildFileSizeStr(fileSize: Long, sizeDiff: Float): String {
+    if (fileSize < 0) {
+      return " ??? B "
+    }
+
+    val sizeString = if (fileSize < 1024) {
+      "$fileSize B"
+    } else {
+      "${fileSize / 1024} KB"
+    }
+
+    var formattedSize = String.format("%s%%", FILE_SIZE_FORMAT.format(sizeDiff))
+    if (sizeDiff > 0f) {
+      formattedSize = "+$formattedSize"
+    }
+
+    return String.format(" %s (%s) ", sizeString, formattedSize)
+  }
+
+  data class ApkInfoWithSizeDiff(
+    val apkInfo: ApkInfo,
+    val sizeDiff: Float
+  )
 
   data class ApkInfo(
     val apkFileName: ApkFileName,
@@ -278,6 +337,8 @@ open class ListApksHandler : AbstractHandler() {
 
   companion object {
     const val PAGE_PARAM = "page"
+
+    private val FILE_SIZE_FORMAT = DecimalFormat("#######.###")
 
     private val UPLOAD_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
       .append(ISODateTimeFormat.date())
