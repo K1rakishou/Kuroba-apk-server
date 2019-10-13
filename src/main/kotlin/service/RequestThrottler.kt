@@ -65,30 +65,30 @@ open class RequestThrottler(
         remoteVisitor.banDuration = 0
       }
 
+      var banned = false
+
       if (isSlowRequest) {
         ++remoteVisitor.slowRequestsCount
 
         if (remoteVisitor.slowRequestsCount > serverSettings.throttlerSettings.maxSlowRequestsPerCheck) {
-          remoteVisitor.bannedAt = now
           remoteVisitor.banDuration = serverSettings.throttlerSettings.slowRequestsExceededBanTime
-
-          remoteVisitor.slowRequestsCount = 0
-          remoteVisitor.fastRequestsCount = 0
-
-          return true
+          banned = true
         }
       } else {
         ++remoteVisitor.fastRequestsCount
 
         if (remoteVisitor.fastRequestsCount > serverSettings.throttlerSettings.maxFastRequestsPerCheck) {
-          remoteVisitor.bannedAt = now
           remoteVisitor.banDuration = serverSettings.throttlerSettings.fastRequestsExceededBanTime
-
-          remoteVisitor.slowRequestsCount = 0
-          remoteVisitor.fastRequestsCount = 0
-
-          return true
+          banned = true
         }
+      }
+
+      if (banned) {
+        remoteVisitor.bannedAt = now
+        remoteVisitor.slowRequestsCount = 0
+        remoteVisitor.fastRequestsCount = 0
+
+        return true
       }
 
     } finally {
