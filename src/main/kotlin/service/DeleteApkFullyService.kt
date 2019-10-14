@@ -8,6 +8,7 @@ import persister.ApkPersister
 import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
+import server.FatalHandlerException
 
 open class DeleteApkFullyService : KoinComponent {
   private val logger = LoggerFactory.getLogger(DeleteApkFullyService::class.java)
@@ -25,7 +26,7 @@ open class DeleteApkFullyService : KoinComponent {
     run {
       val result = commitPersister.removeCommitsByApkList(apks)
       if (result.isFailure) {
-        throw RuntimeException(
+        throw FatalHandlerException(
           "Couldn't remove commits file from disk after unknown error during storing",
           result.exceptionOrNull()!!
         )
@@ -35,7 +36,7 @@ open class DeleteApkFullyService : KoinComponent {
     run {
       val result = apkPersister.removeApks(apks)
       if (result.isFailure) {
-        throw RuntimeException(
+        throw FatalHandlerException(
           "Couldn't remove apk file from disk after unknown error during storing",
           result.exceptionOrNull()!!
         )
@@ -45,7 +46,7 @@ open class DeleteApkFullyService : KoinComponent {
     run {
       val result = apksRepository.removeApks(apks)
       if (result.isFailure) {
-        throw RuntimeException(
+        throw FatalHandlerException(
           "Couldn't remove inserted apk after unknown error during storing",
           result.exceptionOrNull()!!
         )
@@ -55,7 +56,7 @@ open class DeleteApkFullyService : KoinComponent {
     run {
       val result = commitsRepository.removeCommitsByApkList(apks)
       if (result.isFailure) {
-        throw RuntimeException("Couldn't remove inserted commits by apk list", result.exceptionOrNull()!!)
+        throw FatalHandlerException("Couldn't remove inserted commits by apk list", result.exceptionOrNull()!!)
       }
     }
 

@@ -7,6 +7,7 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.CommitRepository
+import server.FatalHandlerException
 import server.ServerSettings
 import java.io.File
 import java.nio.file.Paths
@@ -79,7 +80,7 @@ open class CommitRepositoryInitializer : Initializer, KoinComponent {
     }
 
     if (apkFilePathList.size != commitFiles.size) {
-      throw RuntimeException("apkFilePathList.size (${apkFilePathList.size}) != commitFiles.size (${commitFiles.size})")
+      throw FatalHandlerException("apkFilePathList.size (${apkFilePathList.size}) != commitFiles.size (${commitFiles.size})")
     }
 
     val resultFiles = mutableListOf<Pair<ApkFileName, CommitFileName>>()

@@ -5,6 +5,7 @@ import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
 import org.koin.core.KoinComponent
 import org.koin.core.inject
+import server.FatalHandlerException
 import java.nio.charset.StandardCharsets
 import java.util.regex.Pattern
 import kotlin.coroutines.resume
@@ -90,7 +91,7 @@ open class FileSystem : KoinComponent {
     }
 
     if (foundFiles.size > 1) {
-      throw RuntimeException("Found more than one file with the same apk uuid: $foundFiles")
+      throw FatalHandlerException("Found more than one file with the same apk uuid: $foundFiles")
     }
 
     return Result.success(foundFiles.first())

@@ -38,11 +38,11 @@ class ServerVerticle(
     super.start()
 
     if (!serverSettings.apksDir.exists()) {
-      throw RuntimeException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
+      throw FatalHandlerException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
     }
 
     if (!mainInitializer.initEverything()) {
-      throw RuntimeException("Initialization error")
+      throw FatalHandlerException("Initialization error")
     }
 
     vertx
@@ -120,11 +120,11 @@ class ServerVerticle(
           .setStatusCode(HttpResponseStatus.INTERNAL_SERVER_ERROR.code())
           .end("Unknown server error")
 
-        if (error is RuntimeException) {
-          // Shutdown the server whenever the RuntimeException is thrown since this exception is fatal
-          vertx.close {
-            throw error
-          }
+        if (error is FatalHandlerException) {
+          // Shutdown the server whenever the FatalHandlerException is thrown
+
+          logger.error("!!! Fatal exception !!!", error)
+          vertx.close()
         } else {
           logger.error("Unhandled handler exception", error)
         }
@@ -164,3 +164,5 @@ class ServerVerticle(
     const val MAX_LATEST_COMMITS_FILE_SIZE = 1024L * 512L // 512 KB
   }
 }
+
+class FatalHandlerException(message: String, cause: Throwable? = null) : Exception(message, cause)
