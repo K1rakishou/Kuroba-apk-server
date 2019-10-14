@@ -39,7 +39,11 @@ open class CommitParser {
       }
 
       val parsedTime = try {
-        DateTime.parse(timeString, Commit.COMMIT_DATE_TIME_PARSER)
+        DateTime.parse(
+          // FIXME: Very bad hack!!!
+          timeString.replace(" UTC", "+00:00").replace(" ", "T"),
+          Commit.COMMIT_DATE_TIME_PARSER
+        )
       } catch (error: Throwable) {
         logger.info("Error while trying to parse commit date, error = ${error.message}")
         return@mapNotNull null
@@ -59,7 +63,7 @@ open class CommitParser {
       .distinctBy { commit -> commit.apkUuid }.size
 
     check(headCommitsCount == 1) {
-      "There are at least two commits that have different apkUuids"
+      "There are at least two commits that have different apkUuids, parsedCommits = ${parsedCommits}"
     }
 
     // First element should contain the latest commit
