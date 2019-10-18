@@ -8,7 +8,6 @@ import java.util.regex.Pattern
 
 open class CommitParser {
   private val logger = LoggerFactory.getLogger(CommitParser::class.java)
-  private val regex = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
 
   fun parseCommits(apkVersion: Long, commitsString: String): List<Commit> {
     val split = commitsString.split('\n')
@@ -20,7 +19,7 @@ open class CommitParser {
     val isFirstCommit = AtomicBoolean(false)
 
     val parsedCommits = split.mapNotNull { sp ->
-      val matcher = regex.matcher(sp)
+      val matcher = UNPARSED_COMMIT_PATTERN.matcher(sp)
       if (!matcher.find()) {
         logger.info("Commit \"$sp\" doesn't match the regex")
         return@mapNotNull null
@@ -78,5 +77,9 @@ open class CommitParser {
 
   fun commitsToString(parsedCommits: List<Commit>): String {
     return parsedCommits.joinToString(separator = "\n") { commit -> commit.serializeToString() }
+  }
+
+  companion object {
+    private val UNPARSED_COMMIT_PATTERN = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
   }
 }
