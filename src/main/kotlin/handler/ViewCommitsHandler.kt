@@ -111,9 +111,9 @@ open class ViewCommitsHandler : AbstractHandler() {
 
         ul("list-style-type:disc;") {
           for (commit in commits) {
-            val commitText = convertAllIssueNumbersIntoLinks(commit).let { string ->
-              return@let convertAllTagNumbersIntoLink(string)
-            }
+            val commitText = convertAllIssueNumbersIntoLinks(commit)
+              .let { output -> convertAllTagNumbersIntoLinks(output) }
+              .let { output -> convertAllCommitHashesIntoLinks(output) }
 
             li {
               unsafe {
@@ -138,18 +138,27 @@ open class ViewCommitsHandler : AbstractHandler() {
     }
   }
 
-  private fun convertAllTagNumbersIntoLink(string: String): String {
+  private fun convertAllTagNumbersIntoLinks(string: String): String {
     return string.replace(GITHUB_TAG_NUMBER_PATTERN) { matchResult ->
       return@replace String.format(GITHUB_TAG_LINK_FORMAT, matchResult.value, matchResult.value)
     }
   }
 
+  private fun convertAllCommitHashesIntoLinks(string: String): String {
+    return string.replace(GITHUB_COMMIT_PATTERN) { matchResult ->
+      return@replace String.format(GITHUB_COMMIT_LINK_FORMAT, matchResult.value, matchResult.value)
+    }
+  }
+
+
   companion object {
     const val COMMIT_FILE_NAME_PARAM = "commit_file_name"
     private val GITHUB_ISSUE_NUMBER_PATTERN = Pattern.compile("(#\\d+)").toRegex()
     private val GITHUB_TAG_NUMBER_PATTERN = Pattern.compile("v(\\d+.\\d+.\\d+)").toRegex()
+    private val GITHUB_COMMIT_PATTERN = Pattern.compile("(\\b[0-9a-f]{5,40}\\b)").toRegex()
     private val REPO_NAME_AND_OWNER = "Adamantcheese/Kuroba"
     private val GITHUB_ISSUE_LINK_FORMAT = "<a href=\"https://github.com/$REPO_NAME_AND_OWNER/issues/%s\">#%s</a>"
     private val GITHUB_TAG_LINK_FORMAT = "<a href=\"https://github.com/$REPO_NAME_AND_OWNER/releases/tag/%s\">%s</a>"
+    private val GITHUB_COMMIT_LINK_FORMAT = "<a href=\"https://github.com/$REPO_NAME_AND_OWNER/commit/%s\">%s</a>"
   }
 }
