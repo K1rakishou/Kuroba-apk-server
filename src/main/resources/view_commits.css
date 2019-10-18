@@ -10,3 +10,18 @@ body,
   color: #A1A2A2;
   position: relative;
 }
+
+#inner {
+  margin-top: 16px;
+  margin-right: 16px;
+  margin-bottom: 16px;
+  margin-left: 16px;
+}
+
+#inner a:link {
+  color: #C3C7C7;
+}
+
+#inner a:visited {
+  color: #8FAFAF;
+}
