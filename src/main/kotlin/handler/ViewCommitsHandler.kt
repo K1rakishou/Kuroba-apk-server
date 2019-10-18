@@ -10,6 +10,7 @@ import kotlinx.html.stream.appendHTML
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.CommitRepository
+import java.util.regex.Pattern
 
 open class ViewCommitsHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ViewCommitsHandler::class.java)
@@ -105,17 +106,39 @@ open class ViewCommitsHandler : AbstractHandler() {
     div {
       id = "wrapper"
 
-      ul("list-style-type:disc;") {
-        for (commit in commits) {
-          li {
-            +commit.serializeToString()
+      div {
+        id = "inner"
+
+        ul("list-style-type:disc;") {
+          for (commit in commits) {
+            val commitText = convertAllIssueNumbersIntoLinks(commit)
+
+            li {
+              unsafe {
+                +commitText
+              }
+            }
           }
         }
       }
     }
   }
 
+  private fun convertAllIssueNumbersIntoLinks(commit: Commit): String {
+    return commit.serializeToString().replace(GITHUB_ISSUE_NUMBER_PATTERN) { matchResult ->
+      val issueNum = if (matchResult.value.startsWith("#")) {
+        matchResult.value.removePrefix("#")
+      } else {
+        matchResult.value
+      }
+
+      return@replace String.format(GITHUB_ISSUE_LINK_FORMAT, issueNum, issueNum)
+    }
+  }
+
   companion object {
     const val COMMIT_FILE_NAME_PARAM = "commit_file_name"
+    private val GITHUB_ISSUE_NUMBER_PATTERN = Pattern.compile("(#\\d+)").toRegex()
+    private val GITHUB_ISSUE_LINK_FORMAT = "<a href=\"https://github.com/Adamantcheese/Kuroba/issues/%s\">#%s</a>"
   }
 }
