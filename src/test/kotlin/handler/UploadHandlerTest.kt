@@ -461,7 +461,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
           assertEquals("8acb72611099915c81998776641606b1b47db583", commits.first().commitHash)
           assertEquals("Merge pull request #25 from K1rakishou/test-my-multi-feature", commits.first().description)
           assertEquals(
-            Commit.COMMIT_DATE_TIME_PRINTER.parseDateTime("2019-09-19T14:52:49+00:00"),
+            Commit.COMMIT_DATE_TIME_PARSER.parseDateTime("2019-09-19T14:52:49+00:00"),
             commits.first().committedAt
           )
           assertEquals(1, commits.count { it.head })

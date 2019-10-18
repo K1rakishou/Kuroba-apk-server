@@ -12,22 +12,17 @@ open class CommitParser {
   fun parseCommits(apkVersion: Long, commitsString: String): List<Commit> {
     val split = commitsString.split('\n')
     if (split.isEmpty()) {
-      logger.error("Couldn't split commits into separate lines")
+      logger.error("Couldn't split commits into separate lines, commitsString = ${commitsString}")
       return emptyList()
     }
 
     val isFirstCommit = AtomicBoolean(false)
 
     val parsedCommits = split.mapNotNull { sp ->
-      val matcher = UNPARSED_COMMIT_PATTERN.matcher(sp)
-      if (!matcher.find()) {
-        logger.info("Commit \"$sp\" doesn't match the regex")
-        return@mapNotNull null
-      }
+      val parsedCommitText = parseCommitString(sp)
+        ?: return@mapNotNull null
 
-      val hash = matcher.group(1)
-      val timeString = matcher.group(2)
-      val description = matcher.group(3)
+      val (hash, timeString, description) = parsedCommitText
 
       if (hash.isBlank() || timeString.isBlank() || description.isBlank()) {
         logger.info("Commit \"$sp\" has one of parameters blank " +
@@ -50,7 +45,7 @@ open class CommitParser {
           Commit.COMMIT_DATE_TIME_PARSER
         )
       } catch (error: Throwable) {
-        logger.info("Error while trying to parse commit date, error = ${error.message}")
+        logger.error("Error while trying to parse commit date, string = ${sp}, error = ${error.message}")
         return@mapNotNull null
       }
 
@@ -68,16 +63,68 @@ open class CommitParser {
       .distinctBy { commit -> commit.apkUuid }.size
 
     check(headCommitsCount == 1) {
-      "There are at least two commits that have different apkUuids, parsedCommits = ${parsedCommits}"
+      "There are at least two commits that have different apkUuids, string = ${commitsString}, parsedCommits = ${parsedCommits}"
     }
 
     // First element should contain the latest commit
     return parsedCommits.sortedByDescending { commit -> commit.committedAt }
   }
 
+  private fun parseCommitString(string: String): ParsedCommitText? {
+    val semicolonCount = string.count { it == ';' }
+    if (semicolonCount < 2) {
+      logger.error("Bad amount of semicolons (${semicolonCount}) in commit text = ${string}")
+      return null
+    }
+
+    if (semicolonCount > 2) {
+      logger.info("Semicolon count is greater than 2 (${semicolonCount}) trying to parse it without regex")
+
+      val commitHashIndex = string.indexOf(';')
+      if (commitHashIndex == -1 || commitHashIndex >= string.length) {
+        logger.error("Commit text doesn't have any semicolons at all, string = $string")
+        return null
+      }
+
+      val commitDateIndex = string.indexOf(';', commitHashIndex + 1)
+      if (commitDateIndex == -1 || commitDateIndex >= string.length) {
+        logger.error("Commit text doesn't have the second semicolon, string = $string")
+        return null
+      }
+
+      val commitHash = string.substring(0, commitHashIndex).trim()
+      val commitDate = string.substring(commitHashIndex + 1, commitDateIndex).trim()
+      val commitDescription = string.substring(commitDateIndex + 1).trim()
+
+      return ParsedCommitText(
+        commitHash,
+        commitDate,
+        commitDescription
+      )
+    } else {
+      val matcher = UNPARSED_COMMIT_PATTERN.matcher(string)
+      if (!matcher.find()) {
+        logger.info("Commit \"$string\" doesn't match the regex")
+        return null
+      }
+
+      return ParsedCommitText(
+        matcher.group(1),
+        matcher.group(2),
+        matcher.group(3)
+      )
+    }
+  }
+
   fun commitsToString(parsedCommits: List<Commit>): String {
     return parsedCommits.joinToString(separator = "\n") { commit -> commit.serializeToString() }
   }
+
+  data class ParsedCommitText(
+    val hash: String,
+    val timeString: String,
+    val description: String
+  )
 
   companion object {
     private val UNPARSED_COMMIT_PATTERN = Pattern.compile("(\\b[0-9a-f]{5,40}\\b); (.*); (.*)")
