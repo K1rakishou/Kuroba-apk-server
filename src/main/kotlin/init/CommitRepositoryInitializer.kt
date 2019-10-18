@@ -40,6 +40,8 @@ open class CommitRepositoryInitializer : Initializer, KoinComponent {
       return Result.success(Unit)
     }
 
+    var commitsWithOldFormatterTime = 0
+
     for ((_, commitFileName) in files) {
       val commitsFilePath =
         Paths.get(serverSettings.apksDir.absolutePath, commitFileName.formatFileName()).toFile().absolutePath
@@ -50,15 +52,33 @@ open class CommitRepositoryInitializer : Initializer, KoinComponent {
         return Result.failure(readFileResult.exceptionOrNull()!!)
       }
 
-      val insertResult = commitRepository.insertCommits(commitFileName.apkVersion, readFileResult.getOrNull()!!)
+      val commitsFileText = readFileResult.getOrNull()!!
+      if (containsOldFormattedTime(commitsFileText)) {
+        ++commitsWithOldFormatterTime
+      }
+
+      val insertResult = commitRepository.insertCommits(commitFileName.apkVersion, commitsFileText)
       if (insertResult.isFailure) {
         logger.error("Couldn't insert read from the file commits")
         return Result.failure(insertResult.exceptionOrNull()!!)
       }
     }
 
+    if (commitsWithOldFormatterTime == 0) {
+      throw RuntimeException("There are no commits with old time format left, time to remove the hack!")
+    }
+
     logger.info("Restored ${files.size} files with commits")
     return Result.success(Unit)
+  }
+
+  private fun containsOldFormattedTime(commitsFileText: String): Boolean {
+    val splitText = commitsFileText.split(';')
+    if (splitText.size < 2) {
+      return false
+    }
+
+    return splitText[1].endsWith("UTC")
   }
 
   private suspend fun splitFiles(files: List<String>): List<Pair<ApkFileName, CommitFileName>> {

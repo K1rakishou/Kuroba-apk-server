@@ -39,9 +39,15 @@ open class CommitParser {
       }
 
       val parsedTime = try {
+        // TODO: remove this hack when there are no commits without "UTC" at the end
+        val fixedString = if (timeString.endsWith("UTC")) {
+          timeString.replace(" UTC", "+00:00").replace(" ", "T")
+        } else {
+          timeString
+        }
+
         DateTime.parse(
-          // FIXME: Very bad hack!!!
-          timeString.replace(" UTC", "+00:00").replace(" ", "T"),
+          fixedString,
           Commit.COMMIT_DATE_TIME_PARSER
         )
       } catch (error: Throwable) {
