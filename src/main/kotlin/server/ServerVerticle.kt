@@ -48,18 +48,18 @@ class ServerVerticle(
     vertx
       .createHttpServer()
       .requestHandler(initRouter())
-      .exceptionHandler { error -> logUnhandledException(error) }
+      .exceptionHandler { error -> logInternalNettyException(error) }
       .listen(8080)
   }
 
-  private fun logUnhandledException(error: Throwable) {
+  private fun logInternalNettyException(error: Throwable) {
     if (error is SocketException && error.message?.contains("Connection reset") == true) {
       // Do not spam the logs with "Connection reset" exceptions
       logger.error("Connection reset by remote peer")
       return
     }
 
-    logger.error("Unhandled exception", error)
+    logger.info("Unhandled exception, error message = ${error}")
   }
 
   private fun initRouter(): Router {
