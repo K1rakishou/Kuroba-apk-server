@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test
 class CommitParserTest {
 
   private val goodCommits =
-      "34a1f35a27006dd379c8b00bcdf64d1bf4344824; 2019-09-15T20:04:09+03:00; trigger CI build 1\n" +
+    "34a1f35a27006dd379c8b00bcdf64d1bf4344824; 2019-09-15T20:04:09+03:00; trigger CI build 1\n" +
       "f331d427addf7e7324e077b91b5043594298ed82; 2019-09-15T19:54:42+03:00; trigger CI build 2\n" +
       "4c97a4587bb30d3fe4cb8997ee6d3034b390edba; 2019-09-15T19:28:20+03:00; trigger CI build 3\n" +
       "10809f356ca657d222d678728aada9b0f52d51c6; 2019-09-15T19:11:58+03:00; trigger CI build 4\n" +
@@ -17,7 +17,8 @@ class CommitParserTest {
       "974a9a48dad7fcd0c3e13ec3267d36ad0029c5cc; 2019-09-15T17:53:03+03:00; trigger CI build 7\n" +
       "781b4fc8c575281859d73029232ce10318cb70e7; 2019-09-15T17:42:52+03:00; trigger CI build 8\n" +
       "d5b07fec46a3edfb8e4e5cc94de68118d0d46704; 2019-09-15T17:29:58+03:00; trigger CI build 9\n" +
-      "c945f7a8a5b866622535df1a417ab13a71b89fe1; 2019-09-15T17:25:21+03:00; trigger CI build 10\n"
+      "c945f7a8a5b866622535df1a417ab13a71b89fe1; 2019-09-15T17:25:21+03:00; trigger CI build 10\n" +
+      "14bd8819810c51f60adc9b910b4721c6781e793d; 2019-09-11T23:46:07-07:00; v4.9.2; please backup before downloading\n"
 
   private val badCommits =
     "" +
@@ -55,7 +56,7 @@ class CommitParserTest {
   fun `parse good commits`() {
     val commits = commitParser.parseCommits(444000, goodCommits)
 
-    assertEquals(10, commits.size)
+    assertEquals(11, commits.size)
 
     assertEquals("34a1f35a27006dd379c8b00bcdf64d1bf4344824", commits[0].commitHash)
     assertEquals("f331d427addf7e7324e077b91b5043594298ed82", commits[1].commitHash)
@@ -67,6 +68,7 @@ class CommitParserTest {
     assertEquals("781b4fc8c575281859d73029232ce10318cb70e7", commits[7].commitHash)
     assertEquals("d5b07fec46a3edfb8e4e5cc94de68118d0d46704", commits[8].commitHash)
     assertEquals("c945f7a8a5b866622535df1a417ab13a71b89fe1", commits[9].commitHash)
+    assertEquals("14bd8819810c51f60adc9b910b4721c6781e793d", commits[10].commitHash)
 
     assertEquals(
       DateTime.parse("2019-09-15T20:04:09+03:00", Commit.COMMIT_DATE_TIME_PARSER),
@@ -108,6 +110,10 @@ class CommitParserTest {
       DateTime.parse("2019-09-15T17:25:21+03:00", Commit.COMMIT_DATE_TIME_PARSER),
       commits[9].committedAt
     )
+    assertEquals(
+      DateTime.parse("2019-09-11T23:46:07-07:00", Commit.COMMIT_DATE_TIME_PARSER),
+      commits[10].committedAt
+    )
 
     assertEquals("trigger CI build 1", commits[0].description)
     assertEquals("trigger CI build 2", commits[1].description)
@@ -119,6 +125,7 @@ class CommitParserTest {
     assertEquals("trigger CI build 8", commits[7].description)
     assertEquals("trigger CI build 9", commits[8].description)
     assertEquals("trigger CI build 10", commits[9].description)
+    assertEquals("v4.9.2; please backup before downloading", commits[10].description)
 
     assertTrue(commits[0].head)
     assertFalse(commits[1].head)
@@ -127,12 +134,24 @@ class CommitParserTest {
     assertFalse(commits[4].head)
     assertFalse(commits[5].head)
     assertFalse(commits[6].head)
+    assertFalse(commits[7].head)
+    assertFalse(commits[8].head)
+    assertFalse(commits[9].head)
+    assertFalse(commits[10].head)
   }
 
   @Test
   fun `test datetime formatter printing`() {
-    val original = "2019-09-15T17:42:52+03:00"
-    val parsed = DateTime.parse(original, Commit.COMMIT_DATE_TIME_PARSER)
-    assertEquals(original, Commit.COMMIT_DATE_TIME_PRINTER.print(parsed))
+    val original = "2019-09-15 17:42:52 UTC"
+
+    assertThrows(IllegalArgumentException::class.java) {
+      DateTime.parse(original, Commit.COMMIT_DATE_TIME_PARSER)
+    }
+  }
+
+  @Test
+  fun `old datetime formatter should fail`() {
+    val parsed = DateTime.parse("2019-09-15T17:42:52+03:00", Commit.COMMIT_DATE_TIME_PARSER)
+    assertEquals("2019-09-15 14:42:52 UTC", Commit.COMMIT_DATE_TIME_PRINTER.print(parsed))
   }
 }
