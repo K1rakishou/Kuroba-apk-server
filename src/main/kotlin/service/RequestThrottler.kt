@@ -97,10 +97,10 @@ open class RequestThrottler(
 
     } finally {
       mutex.withLock {
-        remoteVisitor.isCheckRunning.set(false)
         remoteVisitorsMap[remoteVisitorAddress] = remoteVisitor
-
         removeOldVisitorsTask(now)
+
+        remoteVisitor.isCheckRunning.set(false)
       }
     }
 
@@ -131,13 +131,14 @@ open class RequestThrottler(
       logger.info("removeOldVisitorsTask started")
 
       try {
-        if (remoteVisitorsMap.size < AMOUNT_OF_VISITORS_TO_START_REMOVING) {
-          logger.info("Too few visitors (${remoteVisitorsMap.size}/${AMOUNT_OF_VISITORS_TO_START_REMOVING}) to start removing anything")
+        if (remoteVisitorsMap.size < AMOUNT_OF_UNIQUE_VISITORS_TO_START_REMOVING) {
+          logger.info("Too few visitors (${remoteVisitorsMap.size}/${AMOUNT_OF_UNIQUE_VISITORS_TO_START_REMOVING}) " +
+            "to start removing anything")
           return
         }
 
-        // 10%
-        val amountToCheck = ((remoteVisitorsMap.keys.size / 100f) * 10f).toInt()
+        // 33%
+        val amountToCheck = ((remoteVisitorsMap.keys.size / 100f) * 33f).toInt()
         val visitorsToCheck = remoteVisitorsMap.keys.shuffled().take(amountToCheck)
         val visitorsToDelete = mutableSetOf<String>()
 
@@ -195,6 +196,6 @@ open class RequestThrottler(
   }
 
   companion object {
-    private const val AMOUNT_OF_VISITORS_TO_START_REMOVING = 128
+    private const val AMOUNT_OF_UNIQUE_VISITORS_TO_START_REMOVING = 512
   }
 }
