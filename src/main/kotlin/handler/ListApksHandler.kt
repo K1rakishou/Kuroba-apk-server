@@ -53,6 +53,8 @@ open class ListApksHandler : AbstractHandler() {
     }
 
     val currentPage = calculateCurrentPage(routingContext, apksCount)
+    val totalPages = apksCount / serverSettings.listApksPerPageCount
+
     val pageOfApksResult = apksRepository.getApkListPaged(
       currentPage * serverSettings.listApksPerPageCount,
       serverSettings.listApksPerPageCount
@@ -91,7 +93,8 @@ open class ListApksHandler : AbstractHandler() {
     val html = buildIndexHtmlPage(
       buildApkInfoList(apkNames),
       currentPage,
-      apksCount
+      apksCount,
+      totalPages
     )
 
     routingContext
@@ -126,13 +129,13 @@ open class ListApksHandler : AbstractHandler() {
 
     val resultList = mutableListOf<ApkInfoWithSizeDiff>()
     var prevApkInfoWithSizeDiff = ApkInfoWithSizeDiff(
-      sortedApks.first(),
+      sortedApks.last(),
       0f
     )
 
     resultList.add(0, prevApkInfoWithSizeDiff)
 
-    for (index in sortedApks.size - 1 downTo 0) {
+    for (index in sortedApks.lastIndex - 1 downTo 0) {
       val currentApkInfo = sortedApks[index]
 
       val bigger = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize)
@@ -183,18 +186,28 @@ open class ListApksHandler : AbstractHandler() {
     return -1
   }
 
-  private fun buildIndexHtmlPage(apkInfoList: List<ApkInfoWithSizeDiff>, currentPage: Int, apksCount: Int): String {
+  private fun buildIndexHtmlPage(
+    apkInfoList: List<ApkInfoWithSizeDiff>,
+    currentPage: Int,
+    apksCount: Int,
+    totalPages: Int
+  ): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkInfoList, currentPage, apksCount) }
+        body { createBody(apkInfoList, currentPage, apksCount, totalPages) }
       }
 
       appendln()
     }
   }
 
-  private fun BODY.createBody(apkInfoList: List<ApkInfoWithSizeDiff>, currentPage: Int, apksCount: Int) {
+  private fun BODY.createBody(
+    apkInfoList: List<ApkInfoWithSizeDiff>,
+    currentPage: Int,
+    apksCount: Int,
+    totalPages: Int
+  ) {
     style {
       +indexPageCss
     }
@@ -208,7 +221,7 @@ open class ListApksHandler : AbstractHandler() {
         div {
           id = "inner"
 
-          showApks(apkInfoList, currentPage)
+          showApks(apkInfoList, currentPage, totalPages)
         }
         div {
           id = "bottom"
@@ -242,14 +255,15 @@ open class ListApksHandler : AbstractHandler() {
 
   private fun DIV.showApks(
     apkInfoList: List<ApkInfoWithSizeDiff>,
-    currentPage: Int
+    currentPage: Int,
+    totalPages: Int
   ) {
     require(apkInfoList.isNotEmpty()) { "apkInfoList is empty!" }
 
-    val range = if (apkInfoList.size == 1) {
-      (apkInfoList.indices)
-    } else {
+    val range = if (apkInfoList.size != 1 && totalPages > 1 && currentPage != totalPages) {
       (0 until apkInfoList.size - 1)
+    } else {
+      (apkInfoList.indices)
     }
 
     for (index in range) {
