@@ -26,21 +26,24 @@ open class ApkRepositoryInitializer : Initializer, KoinComponent {
   @ExperimentalCoroutinesApi
   override suspend fun init(): Result<Unit> {
     val result = kotlin.runCatching {
-      var totalInserted = 0
+      var totalApksCount = 0
+      var totalCommitsCount = 0
 
       commitRepository.getAllCommitsStream()
         .catch { error -> throw error }
         .onEach { commitsChunk ->
-          val insertResult = apkRepository.insertApks(mapCommitsToApks(commitsChunk))
+          val apks = mapCommitsToApks(commitsChunk)
+          val insertResult = apkRepository.insertApks(apks)
           if (insertResult.isFailure) {
             throw insertResult.exceptionOrNull()!!
           }
 
-          totalInserted += commitsChunk.size
+          totalApksCount += apks.size
+          totalCommitsCount += commitsChunk.size
         }
         .collect()
 
-      logger.info("Restored ${totalInserted} apks")
+      logger.info("Restored ${totalApksCount} apks and ${totalCommitsCount} commits")
     }
 
     if (result.isFailure) {
