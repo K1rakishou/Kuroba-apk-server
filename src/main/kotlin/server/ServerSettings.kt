@@ -19,6 +19,8 @@ open class ThrottlerSettings(
   open val maxFastRequestsPerCheck: Int = 30,
   open val maxSlowRequestsPerCheck: Int = 5,
 
+  open val throttlingCheckInterval: Long = 60L * 1000L,
+
   // Slow requests are like when you are downloading an apk
   open val slowRequestsExceededBanTime: Int = 2 * 60 * 1000,
 

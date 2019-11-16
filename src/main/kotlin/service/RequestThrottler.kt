@@ -32,13 +32,13 @@ open class RequestThrottler(
 
     val remoteVisitor = mutex.withLock {
       if (!remoteVisitorsMap.containsKey(remoteVisitorAddress)) {
-        val newRemoteVisitor = RemoteVisitor.create(AtomicBoolean(false), now, isSlowRequest, 0L, 0)
+        val newRemoteVisitor = RemoteVisitor.create(AtomicBoolean(false), now, now, isSlowRequest, 0L, 0)
         remoteVisitorsMap[remoteVisitorAddress] = newRemoteVisitor
 
         // First visit, nothing to check
         return false
       } else {
-        val visitor = checkNotNull(remoteVisitorsMap[remoteVisitorAddress]) {
+        val visitor = checkNotNull(remoteVisitorsMap[remoteVisitorAddress]?.copy()) {
           "remoteAddressMap changed while being inside a mutex, couldn't find visitor $remoteVisitorAddress"
         }
 
@@ -63,27 +63,38 @@ open class RequestThrottler(
         // The ban has expired
         remoteVisitor.bannedAt = 0L
         remoteVisitor.banDuration = 0
+        remoteVisitor.checkStartTime = now
       }
 
       var banned = false
 
       if (isSlowRequest) {
         ++remoteVisitor.slowRequestsCount
-
         if (remoteVisitor.slowRequestsCount > serverSettings.throttlerSettings.maxSlowRequestsPerCheck) {
-          logger.info("Banning $remoteVisitorAddress for slowRequests exceeding")
+          if (now - remoteVisitor.checkStartTime < serverSettings.throttlerSettings.throttlingCheckInterval) {
+            logger.info("Banning $remoteVisitorAddress for slowRequests exceeding violation, " +
+              "time = (${now - remoteVisitor.checkStartTime}ms, requestsCount = ${remoteVisitor.slowRequestsCount})")
 
-          remoteVisitor.banDuration = serverSettings.throttlerSettings.slowRequestsExceededBanTime
-          banned = true
+            remoteVisitor.banDuration = serverSettings.throttlerSettings.slowRequestsExceededBanTime
+            banned = true
+          } else {
+            remoteVisitor.checkStartTime = now
+            remoteVisitor.slowRequestsCount = 0
+          }
         }
       } else {
         ++remoteVisitor.fastRequestsCount
-
         if (remoteVisitor.fastRequestsCount > serverSettings.throttlerSettings.maxFastRequestsPerCheck) {
-          logger.info("Banning $remoteVisitorAddress for fastRequests exceeding")
+          if (now - remoteVisitor.checkStartTime < serverSettings.throttlerSettings.throttlingCheckInterval) {
+            logger.info("Banning $remoteVisitorAddress for fastRequests exceeding violation, " +
+              "time = (${now - remoteVisitor.checkStartTime}ms, requestsCount = ${remoteVisitor.fastRequestsCount})")
 
-          remoteVisitor.banDuration = serverSettings.throttlerSettings.fastRequestsExceededBanTime
-          banned = true
+            remoteVisitor.banDuration = serverSettings.throttlerSettings.fastRequestsExceededBanTime
+            banned = true
+          } else {
+            remoteVisitor.checkStartTime = now
+            remoteVisitor.fastRequestsCount = 0
+          }
         }
       }
 
@@ -91,6 +102,7 @@ open class RequestThrottler(
         remoteVisitor.bannedAt = now
         remoteVisitor.slowRequestsCount = 0
         remoteVisitor.fastRequestsCount = 0
+        remoteVisitor.checkStartTime = now
 
         return true
       }
@@ -166,9 +178,10 @@ open class RequestThrottler(
     return remoteVisitorsMap
   }
 
-  class RemoteVisitor private constructor(
+  data class RemoteVisitor constructor(
     var isCheckRunning: AtomicBoolean,
     var lastVisitTime: Long,
+    var checkStartTime: Long,
     var slowRequestsCount: Int,
     var fastRequestsCount: Int,
     var bannedAt: Long,
@@ -179,6 +192,7 @@ open class RequestThrottler(
       fun create(
         isCheckRunning: AtomicBoolean,
         lastVisitTime: Long,
+        checkStartTime: Long,
         isSlowRequest: Boolean,
         bannedAt: Long,
         banDuration: Int
@@ -189,7 +203,15 @@ open class RequestThrottler(
           0 to 1
         }
 
-        return RemoteVisitor(isCheckRunning, lastVisitTime, slowRequests, fastRequests, bannedAt, banDuration)
+        return RemoteVisitor(
+          isCheckRunning,
+          lastVisitTime,
+          checkStartTime,
+          slowRequests,
+          fastRequests,
+          bannedAt,
+          banDuration
+        )
       }
     }
 
