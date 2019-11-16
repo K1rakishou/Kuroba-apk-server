@@ -64,11 +64,7 @@ class ServerStateSaverService(
   }
 
   open suspend fun newSaveServerStateRequest(forced: Boolean) {
-    if (stateSaverActor.offer(forced)) {
-      logger.info("stateSaverActor.offer success")
-    } else {
-      logger.info("stateSaverActor is already processing save state request")
-    }
+    stateSaverActor.offer(forced)
   }
 
   private suspend fun startServerStateSaving() {

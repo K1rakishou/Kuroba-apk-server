@@ -1,8 +1,9 @@
+
 html,
 body {
   padding: 0;
   margin: 0;
-  background: black;
+  background: #000000;
 }
 
 #pages {
@@ -21,9 +22,15 @@ body {
 }
 
 #pages a.active {
-  background-color: #8FAFAF;
+  background-color: #222222;
   color: white;
 }
+
+#pages a.inactive {
+  background-color: #000000;
+  color: white;
+}
+
 
 #middle {
   color: #A1A2A2;
@@ -47,4 +54,22 @@ body {
 #bottom {
   display: flex;
   justify-content: center;
+}
+
+table {
+  border-collapse: collapse;
+  border: 1px solid black;
+}
+
+th,td {
+  border: 1px solid black;
+}
+
+tr:nth-child(even) {
+  background-color: #222222;
+}
+
+table.apks {
+  table-layout: auto;
+  width: 100%;
 }

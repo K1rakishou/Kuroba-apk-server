@@ -57,7 +57,7 @@ open class ListApksHandler : AbstractHandler() {
 
     val pageOfApksResult = apksRepository.getApkListPaged(
       currentPage * serverSettings.listApksPerPageCount,
-      serverSettings.listApksPerPageCount
+      serverSettings.listApksPerPageCount + 1
     )
 
     val pageOfApks = if (pageOfApksResult.isFailure) {
@@ -272,13 +272,17 @@ open class ListApksHandler : AbstractHandler() {
   }
 
   private fun DIV.showPages(apksCount: Int, currentPage: Int) {
-    val pagesCount = apksCount / serverSettings.listApksPerPageCount
+    var pagesCount = apksCount / serverSettings.listApksPerPageCount
+    if (pagesCount * serverSettings.listApksPerPageCount < apksCount) {
+      ++pagesCount
+    }
+
     if (pagesCount > 1) {
       for (page in 0 until pagesCount) {
         val classes = if (page == currentPage) {
           "active"
         } else {
-          null
+          "inactive"
         }
 
         a(classes = classes, href = "${serverSettings.baseUrl}/apks/$page") {
@@ -295,39 +299,46 @@ open class ListApksHandler : AbstractHandler() {
   ) {
     require(apkInfoList.isNotEmpty()) { "apkInfoList is empty!" }
 
-    val range = if (apkInfoList.size != 1 && totalPages > 1 && currentPage != totalPages) {
+    val range = if (apkInfoList.size > serverSettings.listApksPerPageCount && currentPage != totalPages) {
       (0 until apkInfoList.size - 1)
     } else {
       (apkInfoList.indices)
     }
 
-    for (index in range) {
-      val fullApkInfo = apkInfoList[index]
-      val apkInfo = fullApkInfo.apkInfo
-      val apkName = apkInfo.apkFileName
-      val fileSize = apkInfo.fileSize
+    table(classes = "apks") {
+      for (index in range) {
+        val fullApkInfo = apkInfoList[index]
+        val apkInfo = fullApkInfo.apkInfo
+        val apkName = apkInfo.apkFileName
+        val fileSize = apkInfo.fileSize
 
-      val fullApkNameFile = apkName.getUuid() + ".apk"
-      val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
+        val fullApkNameFile = apkName.getUuid() + ".apk"
+        val fullCommitsFileName = apkName.getUuid() + "_commits.txt"
 
-      p {
-        a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
-          +"${serverSettings.apkName}-${fullApkNameFile}"
-        }
+        tr {
+          td {
+            a("${serverSettings.baseUrl}/apk/${fullApkNameFile}") {
+              +"${serverSettings.apkName}-${fullApkNameFile}"
+            }
+          }
+          td {
+            +buildFileSizeStr(fileSize, fullApkInfo.sizeDiff)
+          }
+          td {
+            val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
+            +" Uploaded on ${time} "
 
-        +buildFileSizeStr(fileSize, fullApkInfo.sizeDiff)
-
-        val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
-        +" Uploaded on ${time} "
-        +" Downloaded ${fullApkInfo.downloadedTimes} times"
-
-        if (index == 0 && currentPage == 0) {
-          +" (LATEST)"
-        }
-
-        br {
-          a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
-            +"[View commits]"
+            if (index == 0 && currentPage == 0) {
+              +" (LATEST)"
+            }
+          }
+          td {
+            +" Downloaded ${fullApkInfo.downloadedTimes} times"
+          }
+          td {
+            a("${serverSettings.baseUrl}/commits/${fullCommitsFileName}") {
+              +"[View commits]"
+            }
           }
         }
       }
