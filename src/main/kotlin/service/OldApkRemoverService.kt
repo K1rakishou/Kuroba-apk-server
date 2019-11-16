@@ -33,7 +33,7 @@ open class OldApkRemoverService(
     get() = job + dispatcherProvider.APK_REMOVER()
 
   @UseExperimental(ObsoleteCoroutinesApi::class)
-  private var myActor = actor<Unit> {
+  private val myActor = actor<Unit>(context = coroutineContext, capacity = 1) {
     var lastTimeCheck = Instant.now()
 
     for (event in channel) {
@@ -61,6 +61,8 @@ open class OldApkRemoverService(
 
   private suspend fun deleteOldApksIfThereAreAny() {
     try {
+      logger.info("deleteOldApksIfThereAreAny started")
+
       val apksCountResult = apkRepository.getTotalApksCount()
       if (apksCountResult.isFailure) {
         logger.error("Couldn't get total apks count", apksCountResult.exceptionOrNull()!!)
@@ -90,6 +92,7 @@ open class OldApkRemoverService(
       }
 
       logger.info("Successfully deleted $apksToDeleteCount oldest apks")
+      logger.info("deleteOldApksIfThereAreAny finished")
     } catch (error: Throwable) {
       logger.error("Unknown error when running deleteOldApksIfThereAny()", error)
     }

@@ -80,7 +80,7 @@ abstract class AbstractHandlerTest {
     ListApksHandler = Mockito.spy(ListApksHandler())
     getLatestUploadedCommitHashHandler = Mockito.spy(GetLatestUploadedCommitHashHandler())
     viewCommitsHandler = Mockito.spy(ViewCommitsHandler())
-    requestThrottler = Mockito.spy(RequestThrottler(dispatcherProvider, serverSettings))
+    requestThrottler = Mockito.spy(RequestThrottler(serverSettings))
 
     single { timeUtils }
     single { vertx }

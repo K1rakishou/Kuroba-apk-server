@@ -11,14 +11,14 @@ import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.ApkRepository
-import repository.CommitRepository
+import service.ServerStateSaverService
 import java.text.DecimalFormat
 import kotlin.math.max
 
 open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
-  private val commitsRepository by inject<CommitRepository>()
   private val apksRepository by inject<ApkRepository>()
+  private val serverStateSaverService by inject<ServerStateSaverService>()
   private val indexPageCss by lazy { getResourceString(ListApksHandler::class.java, "index.css") }
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
@@ -90,12 +90,25 @@ open class ListApksHandler : AbstractHandler() {
       return null
     }
 
+    val apkDownloadTimesResult = apksRepository.getApkDownloadTimes(
+      apkNames.map { apkFileName -> apkFileName.getUuid() }
+    )
+
+    val apkDownloadTimes = if (apkDownloadTimesResult.isFailure) {
+      logger.error("Error while trying to get apk download times", apkDownloadTimesResult.exceptionOrNull()!!)
+      emptyList()
+    } else {
+      apkDownloadTimesResult.getOrNull()!!
+    }
+
     val html = buildIndexHtmlPage(
-      buildApkInfoList(apkNames),
+      buildApkInfoList(apkNames, apkDownloadTimes),
       currentPage,
       apksCount,
       totalPages
     )
+
+    serverStateSaverService.newSaveServerStateRequest(false)
 
     routingContext
       .response()
@@ -105,9 +118,16 @@ open class ListApksHandler : AbstractHandler() {
     return Result.success(Unit)
   }
 
-  private suspend fun buildApkInfoList(apkNames: List<ApkFileName>): List<ApkInfoWithSizeDiff> {
+  private suspend fun buildApkInfoList(
+    apkNames: List<ApkFileName>,
+    apkDownloadTimes: List<Pair<String, Int>>
+  ): List<FullApkInfo> {
     if (apkNames.isEmpty()) {
       return emptyList()
+    }
+
+    val downloadTimesMap = apkDownloadTimes.associate { (apkUuid, downloadTimes) ->
+      Pair(apkUuid, downloadTimes)
     }
 
     val sortedApks = apkNames
@@ -122,15 +142,25 @@ open class ListApksHandler : AbstractHandler() {
     check(sortedApks.isNotEmpty()) { "sortedApks is empty!" }
 
     if (sortedApks.size < 2) {
+      val apkInfo = sortedApks.first()
+      val apkUuid = apkInfo.apkFileName.getUuid()
+      val downloadedTimes = downloadTimesMap.getOrDefault(apkUuid, 0)
+
       return listOf(
-        ApkInfoWithSizeDiff(sortedApks.first(), 0f)
+        FullApkInfo(apkInfo, 0f, downloadedTimes)
       )
     }
 
-    val resultList = mutableListOf<ApkInfoWithSizeDiff>()
-    var prevApkInfoWithSizeDiff = ApkInfoWithSizeDiff(
-      sortedApks.last(),
-      0f
+    val resultList = mutableListOf<FullApkInfo>()
+    val lastApk = sortedApks.last()
+
+    var prevApkInfoWithSizeDiff = FullApkInfo(
+      lastApk,
+      0f,
+      downloadTimesMap.getOrDefault(
+        lastApk.apkFileName.getUuid(),
+        0
+      )
     )
 
     resultList.add(0, prevApkInfoWithSizeDiff)
@@ -141,7 +171,12 @@ open class ListApksHandler : AbstractHandler() {
       val bigger = max(prevApkInfoWithSizeDiff.apkInfo.fileSize, currentApkInfo.fileSize)
       val diff = ((prevApkInfoWithSizeDiff.apkInfo.fileSize - currentApkInfo.fileSize) / (bigger / 100f)) * -1f
 
-      val currentApkInfoWithSizeDiff = ApkInfoWithSizeDiff(currentApkInfo, diff)
+      val downloadedTimes = downloadTimesMap.getOrDefault(
+        currentApkInfo.apkFileName.getUuid(),
+        0
+      )
+
+      val currentApkInfoWithSizeDiff = FullApkInfo(currentApkInfo, diff, downloadedTimes)
       resultList.add(0, currentApkInfoWithSizeDiff)
 
       prevApkInfoWithSizeDiff = currentApkInfoWithSizeDiff
@@ -187,7 +222,7 @@ open class ListApksHandler : AbstractHandler() {
   }
 
   private fun buildIndexHtmlPage(
-    apkInfoList: List<ApkInfoWithSizeDiff>,
+    apkInfoList: List<FullApkInfo>,
     currentPage: Int,
     apksCount: Int,
     totalPages: Int
@@ -203,7 +238,7 @@ open class ListApksHandler : AbstractHandler() {
   }
 
   private fun BODY.createBody(
-    apkInfoList: List<ApkInfoWithSizeDiff>,
+    apkInfoList: List<FullApkInfo>,
     currentPage: Int,
     apksCount: Int,
     totalPages: Int
@@ -254,7 +289,7 @@ open class ListApksHandler : AbstractHandler() {
   }
 
   private fun DIV.showApks(
-    apkInfoList: List<ApkInfoWithSizeDiff>,
+    apkInfoList: List<FullApkInfo>,
     currentPage: Int,
     totalPages: Int
   ) {
@@ -267,8 +302,8 @@ open class ListApksHandler : AbstractHandler() {
     }
 
     for (index in range) {
-      val apkInfoWithDiffSize = apkInfoList[index]
-      val apkInfo = apkInfoWithDiffSize.apkInfo
+      val fullApkInfo = apkInfoList[index]
+      val apkInfo = fullApkInfo.apkInfo
       val apkName = apkInfo.apkFileName
       val fileSize = apkInfo.fileSize
 
@@ -280,10 +315,11 @@ open class ListApksHandler : AbstractHandler() {
           +"${serverSettings.apkName}-${fullApkNameFile}"
         }
 
-        +buildFileSizeStr(fileSize, apkInfoWithDiffSize.sizeDiff)
+        +buildFileSizeStr(fileSize, fullApkInfo.sizeDiff)
 
         val time = UPLOAD_DATE_TIME_PRINTER.print(apkName.uploadedOn)
         +" Uploaded on ${time} "
+        +" Downloaded ${fullApkInfo.downloadedTimes} times"
 
         if (index == 0 && currentPage == 0) {
           +" (LATEST)"
@@ -327,9 +363,10 @@ open class ListApksHandler : AbstractHandler() {
     return String.format(" %s (%s) ", sizeString, formattedSize)
   }
 
-  data class ApkInfoWithSizeDiff(
+  data class FullApkInfo(
     val apkInfo: ApkInfo,
-    val sizeDiff: Float
+    val sizeDiff: Float,
+    val downloadedTimes: Int
   )
 
   data class ApkInfo(

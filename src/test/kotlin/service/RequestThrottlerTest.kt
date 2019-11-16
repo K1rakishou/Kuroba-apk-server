@@ -1,6 +1,5 @@
 package service
 
-import dispatchers.TestDispatcherProvider
 import kotlinx.coroutines.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -9,8 +8,6 @@ import server.ThrottlerSettings
 import java.io.File
 
 class RequestThrottlerTest {
-  private val testDispatchers = TestDispatcherProvider()
-
   private fun createThrottlerSettings(
     maxFastRequestsPerCheck: Int = 100,
     maxSlowRequestsPerCheck: Int = 100,
@@ -23,8 +20,8 @@ class RequestThrottlerTest {
         maxFastRequestsPerCheck,
         maxSlowRequestsPerCheck,
         throttlingCheckInterval.toLong(),
-        slowRequestsExceededBanTime,
-        fastRequestsExceededBanTime
+        slowRequestsExceededBanTime.toLong(),
+        fastRequestsExceededBanTime.toLong()
       ),
       baseUrl = "test",
       apksDir = File("123"),
@@ -34,7 +31,7 @@ class RequestThrottlerTest {
 
   @Test
   fun `test call throttler in multiple threads check that we were not throttled the same amount of times as amount of visits`() {
-    val requestThrottler = RequestThrottler(testDispatchers, createThrottlerSettings())
+    val requestThrottler = RequestThrottler(createThrottlerSettings())
 
     runBlocking {
       val results = (0 until 100).map {
@@ -50,7 +47,7 @@ class RequestThrottlerTest {
 
   @Test
   fun `test the same but for multiple users`() {
-    val requestThrottler = RequestThrottler(testDispatchers, createThrottlerSettings())
+    val requestThrottler = RequestThrottler(createThrottlerSettings())
 
     runBlocking {
       val resultMap = mutableMapOf<String, List<Deferred<Boolean>>>()
@@ -76,7 +73,7 @@ class RequestThrottlerTest {
 
   @Test
   fun `test different request type should not interfere with each other`() {
-    val requestThrottler = RequestThrottler(testDispatchers, createThrottlerSettings())
+    val requestThrottler = RequestThrottler(createThrottlerSettings())
 
     runBlocking {
       val fastResults = (0 until 20).map {
@@ -106,8 +103,9 @@ class RequestThrottlerTest {
 
   @Test
   fun `test fast requests ban should be lift after some time`() {
-    val requestThrottler = RequestThrottler(testDispatchers,
-      createThrottlerSettings(maxFastRequestsPerCheck = 10, fastRequestsExceededBanTime = 15, throttlingCheckInterval = 10))
+    val requestThrottler = RequestThrottler(
+      createThrottlerSettings(maxFastRequestsPerCheck = 10, fastRequestsExceededBanTime = 15, throttlingCheckInterval = 10)
+    )
 
     runBlocking {
       val fastResults = (0 until 11).map {
@@ -140,8 +138,9 @@ class RequestThrottlerTest {
 
   @Test
   fun `test slow requests ban should be lift after some time`() {
-    val requestThrottler = RequestThrottler(testDispatchers,
-      createThrottlerSettings(maxSlowRequestsPerCheck = 10, slowRequestsExceededBanTime = 15))
+    val requestThrottler = RequestThrottler(
+      createThrottlerSettings(maxSlowRequestsPerCheck = 10, slowRequestsExceededBanTime = 15)
+    )
 
     runBlocking {
       val fastResults = (0 until 11).map {
@@ -175,7 +174,6 @@ class RequestThrottlerTest {
   @Test
   fun `should be banned when spamming lots of fast requests over time`() {
     val requestThrottler = RequestThrottler(
-      testDispatchers,
       createThrottlerSettings(maxFastRequestsPerCheck = 10, throttlingCheckInterval = 10, fastRequestsExceededBanTime = 5)
     )
 
@@ -204,7 +202,6 @@ class RequestThrottlerTest {
   @Test
   fun `should not be banned when fast requests are spread out over time, requests and check time should be reset`() {
     val requestThrottler = RequestThrottler(
-      testDispatchers,
       createThrottlerSettings(maxFastRequestsPerCheck = 20, throttlingCheckInterval = 22)
     )
 
@@ -226,7 +223,6 @@ class RequestThrottlerTest {
   @Test
   fun `should be banned when spamming lots of slow requests over time`() {
     val requestThrottler = RequestThrottler(
-      testDispatchers,
       createThrottlerSettings(maxSlowRequestsPerCheck = 10, throttlingCheckInterval = 10, slowRequestsExceededBanTime = 5)
     )
 
@@ -255,7 +251,6 @@ class RequestThrottlerTest {
   @Test
   fun `should not be banned when slow requests are spread out over time, requests and check time should be reset`() {
     val requestThrottler = RequestThrottler(
-      testDispatchers,
       createThrottlerSettings(maxSlowRequestsPerCheck = 20, throttlingCheckInterval = 22)
     )
 

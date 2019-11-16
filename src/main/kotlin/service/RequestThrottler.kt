@@ -1,28 +1,19 @@
 package service
 
-import dispatchers.DispatcherProvider
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.slf4j.LoggerFactory
 import server.ServerSettings
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.coroutines.CoroutineContext
 
 open class RequestThrottler(
-  private val dispatcherProvider: DispatcherProvider,
   private val serverSettings: ServerSettings
-) : CoroutineScope {
+) {
   private val logger = LoggerFactory.getLogger(RequestThrottler::class.java)
 
-  private val job = SupervisorJob()
   private val mutex = Mutex()
   private val remoteVisitorsMap = HashMap<String, RemoteVisitor>(128)
   private var lastTimeRemoveOldVisitorsTaskRun: Long = System.currentTimeMillis()
-
-  override val coroutineContext: CoroutineContext
-    get() = job + dispatcherProvider.IO()
 
   /**
    * Returns true if the user shouldn't be able to continue his request
@@ -54,7 +45,7 @@ open class RequestThrottler(
     }
 
     try {
-      if (remoteVisitor.banDuration != 0) {
+      if (remoteVisitor.banDuration != 0L) {
         if (now - remoteVisitor.bannedAt <= remoteVisitor.banDuration) {
           // Still banned
           return true
@@ -185,7 +176,7 @@ open class RequestThrottler(
     var slowRequestsCount: Int,
     var fastRequestsCount: Int,
     var bannedAt: Long,
-    var banDuration: Int
+    var banDuration: Long
   ) {
 
     companion object {
@@ -195,7 +186,7 @@ open class RequestThrottler(
         checkStartTime: Long,
         isSlowRequest: Boolean,
         bannedAt: Long,
-        banDuration: Int
+        banDuration: Long
       ): RemoteVisitor {
         val (slowRequests, fastRequests) = if (isSlowRequest) {
           1 to 0

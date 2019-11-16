@@ -1,6 +1,7 @@
 package server
 
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 open class ServerSettings(
   open val baseUrl: String,
@@ -9,8 +10,8 @@ open class ServerSettings(
   open val apkName: String = "kuroba-dev",
   // ~10MB per apk * 1000 ~= 10GB
   open val maxApkFiles: Int = 1000,
-  // 5 minutes
-  open val apkDeletionInterval: Long = 5L * 1000L * 60L,
+  open val apkDeletionInterval: Long = TimeUnit.MINUTES.toMillis(5),
+  open val serverStateSavingInterval: Long = TimeUnit.HOURS.toMillis(1),
   open val listApksPerPageCount: Int = 50,
   open val throttlerSettings: ThrottlerSettings = ThrottlerSettings()
 )
@@ -19,15 +20,13 @@ open class ThrottlerSettings(
   open val maxFastRequestsPerCheck: Int = 30,
   open val maxSlowRequestsPerCheck: Int = 5,
 
-  open val throttlingCheckInterval: Long = 60L * 1000L,
+  open val throttlingCheckInterval: Long = TimeUnit.MINUTES.toMillis(1),
 
   // Slow requests are like when you are downloading an apk
-  open val slowRequestsExceededBanTime: Int = 2 * 60 * 1000,
+  open val slowRequestsExceededBanTime: Long = TimeUnit.MINUTES.toMillis(2),
 
   // Fast request are just the regular requests (page refresh)
-  open val fastRequestsExceededBanTime: Int = 60 * 1000,
-  // 30 minutes
-  open val removeOldVisitorsInterval: Long = 30L * 60L * 1000L,
-  // 1 hour
-  open val oldVisitorTime: Long = 60 * 60 * 1000
+  open val fastRequestsExceededBanTime: Long = TimeUnit.MINUTES.toMillis(1),
+  open val removeOldVisitorsInterval: Long = TimeUnit.MINUTES.toMillis(30),
+  open val oldVisitorTime: Long = TimeUnit.HOURS.toMillis(1)
 )

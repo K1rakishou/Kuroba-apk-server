@@ -3,6 +3,7 @@ package fs
 import data.ApkFileName.Companion.APK_EXTENSION
 import io.vertx.core.Vertx
 import io.vertx.core.buffer.Buffer
+import io.vertx.core.file.CopyOptions
 import org.koin.core.KoinComponent
 import org.koin.core.inject
 import server.FatalHandlerException
@@ -17,6 +18,27 @@ open class FileSystem : KoinComponent {
   suspend fun createFile(path: String): Result<Unit> {
     return suspendCoroutine { continuation ->
       vertx.fileSystem().createFile(path) { asyncResult ->
+        if (asyncResult.succeeded()) {
+          continuation.resume(Result.success(Unit))
+        } else {
+          continuation.resume(Result.failure(asyncResult.cause()))
+        }
+      }
+    }
+  }
+
+  suspend fun moveFile(oldFilePath: String, newFilePath: String, options: CopyOptions): Result<Unit> {
+    val fileExistsResult = fileExistsAsync(oldFilePath)
+    if (fileExistsResult.isFailure) {
+      return Result.failure(fileExistsResult.exceptionOrNull()!!)
+    }
+
+    if (!fileExistsResult.getOrNull()!!) {
+      return Result.failure(FileDoesNotExistException(oldFilePath))
+    }
+
+    return suspendCoroutine { continuation ->
+      vertx.fileSystem().move(oldFilePath, newFilePath, options) { asyncResult ->
         if (asyncResult.succeeded()) {
           continuation.resume(Result.success(Unit))
         } else {
@@ -199,6 +221,8 @@ open class FileSystem : KoinComponent {
       }
     }
   }
+
+  class FileDoesNotExistException(path: String) : Exception("File ${path} does not exist")
 
   companion object {
     private const val APK_NAME_REGEX_FORMAT = ".*(%s)_(\\d+)\\$APK_EXTENSION"

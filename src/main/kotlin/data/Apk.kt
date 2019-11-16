@@ -8,7 +8,8 @@ data class Apk(
   val apkUuid: String,
   val apkVersion: Long,
   val apkFullPath: String,
-  val uploadedOn: DateTime
+  val uploadedOn: DateTime,
+  val downloadedTimes: Int
 ) {
 
   companion object {
@@ -19,7 +20,8 @@ data class Apk(
         resultRow[ApkTable.groupUuid],
         resultRow[ApkTable.apkVersion],
         resultRow[ApkTable.apkFullPath],
-        resultRow[ApkTable.uploadedOn]
+        resultRow[ApkTable.uploadedOn],
+        resultRow[ApkTable.downloadedTimes]
       )
     }
   }
@@ -51,11 +53,12 @@ data class Apk(
 
   override fun toString(): String {
     return String.format(
-      "uuid = %s, apkVersion = %d, path = %s, uploadedOn = %s",
+      "uuid = %s, apkVersion = %d, path = %s, uploadedOn = %s, downloadedTimes = %d",
       apkUuid,
       apkVersion,
       apkFullPath,
-      ApkFileName.APK_UPLOADED_ON_PRINTER.print(uploadedOn)
+      ApkFileName.APK_UPLOADED_ON_PRINTER.print(uploadedOn),
+      downloadedTimes
     )
   }
 }

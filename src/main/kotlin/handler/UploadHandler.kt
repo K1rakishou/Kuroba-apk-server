@@ -205,7 +205,8 @@ open class UploadHandler : AbstractHandler() {
         headCommit.apkUuid,
         apkVersion,
         fullPath,
-        now
+        now,
+        0
       )
 
       val insertApkResult = apksRepository.insertApks(listOf(apk))

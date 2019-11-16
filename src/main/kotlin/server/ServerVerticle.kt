@@ -33,6 +33,7 @@ class ServerVerticle(
   private val viewCommitsHandler by inject<ViewCommitsHandler>()
   private val getLatestApkHandler by inject<GetLatestApkHandler>()
   private val getLatestApkUuidHandler by inject<GetLatestApkUuidHandler>()
+  private val saveServerStateHandler by inject<SaveServerStateHandler>()
 
   override suspend fun start() {
     super.start()
@@ -91,6 +92,9 @@ class ServerVerticle(
       }
       get("/latest_apk_uuid").handler { routingContext ->
         handle(false, routingContext) { getLatestApkUuidHandler.handle(routingContext) }
+      }
+      get("/save_state").handler { routingContext ->
+        handle(false, routingContext) { saveServerStateHandler.handle(routingContext) }
       }
       route("/favicon.ico").handler(FaviconHandler.create("favicon.ico"))
     }

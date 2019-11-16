@@ -68,7 +68,8 @@ class MainModule(
       single { OldApkRemoverService(dispatcherProvider) }
       single { DeleteApkFullyService() }
       single { JsonConverter(get()) }
-      single { RequestThrottler(dispatcherProvider, get()) }
+      single { RequestThrottler(get()) }
+      single { ServerStateSaverService(dispatcherProvider, get()) }
 
       // Persisters
       single { CommitPersister() }
@@ -82,6 +83,7 @@ class MainModule(
       single { ViewCommitsHandler() }
       single { GetLatestApkHandler() }
       single { GetLatestApkUuidHandler() }
+      single { SaveServerStateHandler() }
     }
   }
 }

@@ -3,10 +3,15 @@ package handler
 import data.ApkFileName
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
+import org.koin.core.inject
 import org.slf4j.LoggerFactory
+import repository.ApkRepository
+import service.ServerStateSaverService
 
 open class GetApkHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetApkHandler::class.java)
+  private val apkRepository by inject<ApkRepository>()
+  private val serverStateSaverService by inject<ServerStateSaverService>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New get apk request from ${routingContext.request().remoteAddress()}")
@@ -66,7 +71,6 @@ open class GetApkHandler : AbstractHandler() {
       return Result.failure(FileDoesNotExist(serverSettings.apksDir.absolutePath, apkUuid))
     }
 
-    val apkFileName = ApkFileName.fromString(apkPath)
     val readFileResult = fileSystem.readFileAsync(apkPath)
     if (readFileResult.isFailure) {
       logger.error("Error while reading file from the disk ")
@@ -80,6 +84,17 @@ open class GetApkHandler : AbstractHandler() {
       return Result.failure(readFileResult.exceptionOrNull()!!)
     }
 
+    val increaseDownloadCountResult = apkRepository.increaseDownloadCountForApk(apkUuid)
+    if (increaseDownloadCountResult.isFailure) {
+      logger.error(
+        "Error while trying to increase the apk download times counter",
+        increaseDownloadCountResult.exceptionOrNull()!!
+      )
+    }
+
+    serverStateSaverService.newSaveServerStateRequest(false)
+
+    val apkFileName = ApkFileName.fromString(apkPath)
     routingContext
       .response()
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")

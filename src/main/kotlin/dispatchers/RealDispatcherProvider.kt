@@ -8,4 +8,5 @@ import java.util.concurrent.Executors
 class RealDispatcherProvider : DispatcherProvider {
   override fun IO(): CoroutineDispatcher = Dispatchers.IO
   override fun APK_REMOVER(): CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+  override fun STATE_SAVER(): CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 }

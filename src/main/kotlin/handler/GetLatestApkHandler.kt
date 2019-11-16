@@ -9,7 +9,6 @@ import repository.ApkRepository
 
 class GetLatestApkHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(GetLatestApkHandler::class.java)
-
   private val apkRepository by inject<ApkRepository>()
 
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
@@ -80,6 +79,14 @@ class GetLatestApkHandler : AbstractHandler() {
       )
 
       return Result.failure(readFileResult.exceptionOrNull()!!)
+    }
+
+    val increaseDownloadCountResult = apkRepository.increaseDownloadCountForApk(latestApk.apkUuid)
+    if (increaseDownloadCountResult.isFailure) {
+      logger.error(
+        "Error while trying to increase the apk download times counter",
+        increaseDownloadCountResult.exceptionOrNull()!!
+      )
     }
 
     routingContext

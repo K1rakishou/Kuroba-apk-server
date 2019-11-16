@@ -13,6 +13,7 @@ object ApkTable : Table("apk_table") {
   val apkVersion = long(Field.APK_VERSION)
   val apkFullPath = varchar(Field.APK_FULL_PATH, Apk.APK_MAX_PATH_LENGTH)
   val uploadedOn = datetime(Field.UPLOADED_ON).index(Index.UPLOADED_ON)
+  val downloadedTimes = integer(Field.DOWNLOADED_TIMES).default(0)
 
   object Field {
     const val ID = "id"
@@ -20,6 +21,7 @@ object ApkTable : Table("apk_table") {
     const val APK_VERSION = "apk_version"
     const val APK_FULL_PATH = "apk_full_path"
     const val UPLOADED_ON = "uploaded_on"
+    const val DOWNLOADED_TIMES = "downloaded_times"
   }
 
   object Index {

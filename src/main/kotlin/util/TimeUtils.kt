@@ -13,4 +13,8 @@ open class TimeUtils {
     return now.isAfter(nextRunTime)
   }
 
+  open fun isItTimeToSaveServerState(now: Instant, nextRunTime: Instant): Boolean {
+    return now.isAfter(nextRunTime)
+  }
+
 }

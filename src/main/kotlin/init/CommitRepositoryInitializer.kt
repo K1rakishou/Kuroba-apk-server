@@ -95,6 +95,7 @@ open class CommitRepositoryInitializer : Initializer, KoinComponent {
       when {
         file.endsWith("_commits.txt") -> commitFiles += file
         file.endsWith(".apk") -> apkFilePathList += file
+        file.endsWith(".json") -> logger.info("Skip state file")
         else -> logger.error("Unknown file: $file")
       }
     }
