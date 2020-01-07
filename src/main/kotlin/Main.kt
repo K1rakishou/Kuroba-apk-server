@@ -1,5 +1,6 @@
 import db.ApkTable
 import db.CommitTable
+import db.ReportTable
 import di.MainModule
 import dispatchers.RealDispatcherProvider
 import io.vertx.core.Vertx
@@ -13,8 +14,8 @@ import java.io.File
 
 
 fun main(args: Array<String>) {
-  if (args.size != 3) {
-    println("Not enough arguments! (base url, secret key and apks dir must be provided!)")
+  if (args.size != 4) {
+    println("Not enough arguments! (base url, secret key, apks dir and reports dir must be provided!)")
     return
   }
 
@@ -24,13 +25,24 @@ fun main(args: Array<String>) {
   val baseUrl = args[0]
   val secretKey = args[1]
   val apksDirPath = args[2]
+  val reportsDirPath = args[3]
 
-  println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath")
+  println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath, reportsDirPath = ${reportsDirPath}")
   val database = initDatabase()
   val dispatcherProvider = RealDispatcherProvider()
 
   startKoin {
-    modules(MainModule(vertx, database, baseUrl, File(apksDirPath), secretKey, dispatcherProvider).createMainModule())
+    modules(
+      MainModule(
+        vertx,
+        database,
+        baseUrl,
+        File(apksDirPath),
+        File(reportsDirPath),
+        secretKey,
+        dispatcherProvider
+      ).createMainModule()
+    )
   }
 
   vertx.deployVerticle(ServerVerticle(dispatcherProvider)) { ar ->
@@ -51,6 +63,7 @@ private fun initDatabase(): Database {
     transaction(database) {
       SchemaUtils.create(CommitTable)
       SchemaUtils.create(ApkTable)
+      SchemaUtils.create(ReportTable)
     }
 
     println("Done")

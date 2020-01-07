@@ -62,6 +62,7 @@ abstract class AbstractHandlerTest {
         ServerSettings(
           "http://127.0.0.1:8080",
           File("src/test/resources/test_dump"),
+          File("src/test/resources/reports_test_dump"),
           "test_key",
           "kuroba-dev"
         )

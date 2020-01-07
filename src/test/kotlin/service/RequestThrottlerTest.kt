@@ -25,6 +25,7 @@ class RequestThrottlerTest {
       ),
       baseUrl = "test",
       apksDir = File("123"),
+      reportsDir = File("456"),
       secretKey = "123"
     )
   }

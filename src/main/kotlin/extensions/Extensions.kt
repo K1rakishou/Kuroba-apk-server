@@ -39,3 +39,11 @@ fun getResourceString(clazz: Class<*>, fileName: String): String {
     String(inStream.readAllBytes(), Charset.defaultCharset())
   }
 }
+
+fun String.trimEndIfLongerThan(maxSize: Int): String {
+  if (length <= maxSize) {
+    return this
+  }
+
+  return substring(0, maxSize)
+}

@@ -34,6 +34,7 @@ class ServerVerticle(
   private val getLatestApkHandler by inject<GetLatestApkHandler>()
   private val getLatestApkUuidHandler by inject<GetLatestApkUuidHandler>()
   private val saveServerStateHandler by inject<SaveServerStateHandler>()
+  private val reportHandler by inject<ReportHandler>()
 
   override suspend fun start() {
     super.start()
@@ -65,11 +66,15 @@ class ServerVerticle(
 
   private fun initRouter(): Router {
     return Router.router(vertx).apply {
-      post("/upload").handler(createBodyHandler())
+      post("/upload").handler(createApkUploadBodyHandler())
       post("/upload").handler { routingContext ->
         handle(true, routingContext) {
           uploadHandler.handle(routingContext)
         }
+      }
+      post("/report").handler(createReportBodyHandler())
+      post("/report").handler { routingContext ->
+        handle(false, routingContext) { reportHandler.handle(routingContext) }
       }
       get("/apk/:${GetApkHandler.APK_NAME_PARAM}").handler { routingContext ->
         handle(true, routingContext) { getApkHandler.handle(routingContext) }
@@ -99,7 +104,13 @@ class ServerVerticle(
     }
   }
 
-  private fun createBodyHandler(): BodyHandler {
+  private fun createReportBodyHandler(): BodyHandler {
+    return BodyHandler.create()
+      .setDeleteUploadedFilesOnEnd(true)
+      .setBodyLimit(MAX_REPORT_SIZE)
+  }
+
+  private fun createApkUploadBodyHandler(): BodyHandler {
     return BodyHandler.create()
       .setMergeFormAttributes(true)
       .setDeleteUploadedFilesOnEnd(true)
@@ -164,6 +175,7 @@ class ServerVerticle(
     const val SECRET_KEY_HEADER_NAME = "SECRET_KEY"
     const val APK_VERSION_HEADER_NAME = "APK_VERSION"
     const val MAX_APK_FILE_SIZE = 1024L * 1024L * 32L // 32 MB
+    const val MAX_REPORT_SIZE = 1024L * 1024L // 1 MB
     const val MAX_LATEST_COMMITS_FILE_SIZE = 1024L * 512L // 512 KB
   }
 }

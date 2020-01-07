@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit
 open class ServerSettings(
   open val baseUrl: String,
   open val apksDir: File,
+  open val reportsDir: File,
   open val secretKey: String,
   open val apkName: String = "kuroba-dev",
   // ~10MB per apk * 1000 ~= 10GB

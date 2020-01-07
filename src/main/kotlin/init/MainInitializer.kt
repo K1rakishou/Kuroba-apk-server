@@ -14,6 +14,7 @@ open class MainInitializer(
 
   private val commitRepositoryInitializer by inject<CommitRepositoryInitializer>()
   private val apkRepositoryInitializer by inject<ApkRepositoryInitializer>()
+  private val reportRepositoryInitializer by inject<ReportRepositoryInitializer>()
 
   open suspend fun initEverything(): Boolean {
     return withContext(dispatcherProvider.IO()) {
@@ -29,6 +30,12 @@ open class MainInitializer(
         val apkRepoInitResult = apkRepositoryInitializer.init()
         if (apkRepoInitResult.isFailure) {
           logger.error("Couldn't init apks repo", apkRepoInitResult.exceptionOrNull()!!)
+          return@withContext false
+        }
+
+        val reportRepoInitResult = reportRepositoryInitializer.init()
+        if (reportRepoInitResult.isFailure) {
+          logger.error("Couldn't init report repo", reportRepoInitResult.exceptionOrNull()!!)
           return@withContext false
         }
       }
