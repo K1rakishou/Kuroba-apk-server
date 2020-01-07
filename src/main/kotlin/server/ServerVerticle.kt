@@ -68,7 +68,6 @@ class ServerVerticle(
       post("/upload").handler(createBodyHandler())
       post("/upload").handler { routingContext ->
         handle(true, routingContext) {
-          routingContext.response().setChunked(true)
           uploadHandler.handle(routingContext)
         }
       }

@@ -89,11 +89,13 @@ class GetLatestApkHandler : AbstractHandler() {
       )
     }
 
+    val fileBuffer = readFileResult.getOrNull()!!
+
     routingContext
       .response()
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
-      .setChunked(true)
-      .write(readFileResult.getOrNull()!!)
+      .putHeader("Content-Length", fileBuffer.length().toString())
+      .write(fileBuffer)
       .setStatusCode(HttpResponseStatus.OK.code())
       .end()
 
