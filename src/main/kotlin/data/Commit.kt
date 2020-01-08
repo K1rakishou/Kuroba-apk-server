@@ -23,8 +23,15 @@ data class Commit(
     return String.format(
       "%s; %s; %s",
       commitHash,
-      COMMIT_DATE_TIME_PRINTER.print(committedAt),
-      description
+      COMMIT_DATE_TIME_PRINTER.print(committedAt)
+    )
+  }
+
+  fun serializeToStringNoDescription(): String {
+    return String.format(
+      "%s; %s",
+      commitHash,
+      COMMIT_DATE_TIME_PRINTER.print(committedAt)
     )
   }
 
