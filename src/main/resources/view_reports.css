@@ -1,0 +1,45 @@
+
+html,
+body {
+    padding: 0;
+    margin: 0;
+    background: #000000;
+}
+#pages {
+    display: inline-block;
+    position: fixed;
+    bottom: 8px;
+}
+#pages a {
+    color: white;
+    text-decoration: none;
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+#pages a.active {
+    background-color: #222222;
+    color: white;
+}
+#pages a.inactive {
+    background-color: #000000;
+    color: white;
+}
+#inner {
+    color: #A1A2A2;
+    margin-top: 32px;
+    margin-right: 16px;
+    margin-bottom: 48px;
+    margin-left: 16px;
+}
+#inner a: link {
+    color: #C3C7C7;
+}
+#inner a: visited {
+    color: #8FAFAF;
+}
+#bottom {
+    display: flex;
+    justify-content: center;
+}

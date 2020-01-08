@@ -35,6 +35,8 @@ class ServerVerticle(
   private val getLatestApkUuidHandler by inject<GetLatestApkUuidHandler>()
   private val saveServerStateHandler by inject<SaveServerStateHandler>()
   private val reportHandler by inject<ReportHandler>()
+  private val viewReportsHandler by inject<ViewReportsHandler>()
+  private val deleteReportHandler by inject<DeleteReportHandler>()
 
   override suspend fun start() {
     super.start()
@@ -76,6 +78,10 @@ class ServerVerticle(
       post("/report").handler { routingContext ->
         handle(false, routingContext) { reportHandler.handle(routingContext) }
       }
+      post("/delete_report").handler(createDeleteReportBodyHandler())
+      post("/delete_report").handler { routingContent ->
+        handle(false, routingContent) { deleteReportHandler.handle(routingContent) }
+      }
       get("/apk/:${GetApkHandler.APK_NAME_PARAM}").handler { routingContext ->
         handle(true, routingContext) { getApkHandler.handle(routingContext) }
       }
@@ -84,6 +90,9 @@ class ServerVerticle(
       }
       get("/commits/:${ViewCommitsHandler.COMMIT_FILE_NAME_PARAM}").handler { routingContext ->
         handle(false, routingContext) { viewCommitsHandler.handle(routingContext) }
+      }
+      get("/reports").handler { routingContent ->
+        handle(false, routingContent) { viewReportsHandler.handle(routingContent) }
       }
       get("/").handler { routingContext ->
         routingContext.reroute(HttpMethod.GET, "/apks/0")
@@ -102,6 +111,12 @@ class ServerVerticle(
       }
       route("/favicon.ico").handler(FaviconHandler.create("favicon.ico"))
     }
+  }
+
+  private fun createDeleteReportBodyHandler(): BodyHandler {
+    return BodyHandler.create()
+      .setDeleteUploadedFilesOnEnd(true)
+      .setBodyLimit(MAX_DELETE_REPORT_SIZE)
   }
 
   private fun createReportBodyHandler(): BodyHandler {
@@ -176,6 +191,7 @@ class ServerVerticle(
     const val APK_VERSION_HEADER_NAME = "APK_VERSION"
     const val MAX_APK_FILE_SIZE = 1024L * 1024L * 32L // 32 MB
     const val MAX_REPORT_SIZE = 1024L * 1024L // 1 MB
+    const val MAX_DELETE_REPORT_SIZE = 1024L // 1 KB
     const val MAX_LATEST_COMMITS_FILE_SIZE = 1024L * 512L // 512 KB
   }
 }

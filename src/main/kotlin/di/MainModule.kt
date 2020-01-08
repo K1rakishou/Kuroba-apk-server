@@ -98,6 +98,8 @@ class MainModule(
       single { GetLatestApkUuidHandler() }
       single { SaveServerStateHandler() }
       single { ReportHandler() }
+      single { ViewReportsHandler() }
+      single { DeleteReportHandler() }
     }
   }
 }

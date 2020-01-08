@@ -7,6 +7,8 @@ import extensions.trimEndIfLongerThan
 import okio.ByteString
 import org.jetbrains.exposed.sql.ResultRow
 import org.joda.time.DateTime
+import org.joda.time.format.DateTimeFormatterBuilder
+import org.joda.time.format.ISODateTimeFormat
 
 data class ErrorReport(
   val buildFlavor: String,
@@ -32,12 +34,24 @@ data class ErrorReport(
     return ByteString.encodeUtf8(str).md5().hex()
   }
 
+  override fun toString(): String {
+    return "ErrorReport(buildFlavor='$buildFlavor', versionName='$versionName', title='$title', description='$description', logs=$logs, reportedAt=$reportedAt)"
+  }
+
   companion object {
     const val MAX_BUILD_FLAVOR_LENGTH = 32
     const val MAX_VERSION_NAME_LENGTH = 128
     const val MAX_TITLE_LENGTH = 512
     const val MAX_DESCRIPTION_LENGTH = 8192
     const val MAX_LOGS_LENGTH = 65535
+
+    val REPORT_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
+      .append(ISODateTimeFormat.date())
+      .appendLiteral(' ')
+      .append(ISODateTimeFormat.hourMinuteSecond())
+      .appendLiteral(" UTC")
+      .toFormatter()
+      .withZoneUTC()
 
     fun fromJsonData(errorReportJsonData: ErrorReportJsonData, time: DateTime): ErrorReport {
       return ErrorReport(

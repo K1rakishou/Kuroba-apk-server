@@ -68,4 +68,23 @@ class ReportPersister : KoinComponent {
     return Result.success(Unit)
   }
 
+  suspend fun deleteReport(reportHash: String): Result<Unit> {
+    val repoDeleteResult = reportRepository.deleteReport(reportHash)
+    if (repoDeleteResult.isFailure) {
+      return Result.failure(repoDeleteResult.exceptionOrNull()!!)
+    }
+
+    val fullPath = Paths.get(
+      serverSettings.reportsDir.absolutePath,
+      "${reportHash}.txt"
+    ).toFile().absolutePath
+
+    val removeResult = fileSystem.removeFileAsync(fullPath)
+    if (removeResult.isFailure) {
+      return Result.failure(removeResult.exceptionOrNull()!!)
+    }
+
+    return Result.success(Unit)
+  }
+
 }

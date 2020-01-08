@@ -1,7 +1,6 @@
 package init
 
 import data.ErrorReport
-import data.json.SerializedErrorReport
 import fs.FileSystem
 import org.koin.core.KoinComponent
 import org.koin.core.inject
@@ -56,7 +55,7 @@ class ReportRepositoryInitializer : Initializer, KoinComponent {
 
       reports += try {
         ErrorReport.fromSerializedErrorReport(
-          jsonConverter.fromJson<SerializedErrorReport>(reportFileJson)
+          jsonConverter.fromJson(reportFileJson)
         )
       } catch (error: Throwable) {
         logger.error("Couldn't convert SerializedErrorReport to ErrorReport", error)

@@ -4,10 +4,7 @@ import data.ErrorReport
 import db.ReportTable
 import dispatchers.DispatcherProvider
 import extensions.selectFilterDuplicates
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.*
 import util.TimeUtils
 
 class ReportRepository(
@@ -35,7 +32,7 @@ class ReportRepository(
             this[ReportTable.title] = report.title
             this[ReportTable.description] = report.description
             this[ReportTable.logs] = report.logs
-            this[ReportTable.reportedAt] = timeUtils.now()
+            this[ReportTable.reportedAt] = report.reportedAt
           }
         }
     }
@@ -61,6 +58,14 @@ class ReportRepository(
         it[logs] = report.logs
         it[reportedAt] = report.reportedAt
       }
+    }
+  }
+
+  suspend fun getAllReports(): Result<List<ErrorReport>> {
+    return dbRead {
+      ReportTable.selectAll()
+        .orderBy(ReportTable.reportedAt, SortOrder.DESC)
+        .map { resultRow -> ErrorReport.fromResultRow(resultRow) }
     }
   }
 
