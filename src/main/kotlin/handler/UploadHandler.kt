@@ -144,7 +144,8 @@ open class UploadHandler : AbstractHandler() {
         sendResponse(
           routingContext,
           "An apk with these commits has already been uploaded",
-          HttpResponseStatus.BAD_REQUEST)
+          HttpResponseStatus.BAD_REQUEST
+        )
 
         return Result.success(Unit)
       }

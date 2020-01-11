@@ -23,7 +23,8 @@ data class Commit(
     return String.format(
       "%s; %s; %s",
       commitHash,
-      COMMIT_DATE_TIME_PRINTER.print(committedAt)
+      COMMIT_DATE_TIME_PRINTER.print(committedAt),
+      description
     )
   }
 
