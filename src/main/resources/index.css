@@ -31,24 +31,28 @@ body {
   color: white;
 }
 
-
-#middle {
+#wrapper {
   color: #A1A2A2;
-}
-
-#inner {
-  margin-top: 32px;
+  margin-top: 16px;
+  margin-bottom: 16px;
   margin-right: 16px;
-  margin-bottom: 48px;
   margin-left: 16px;
 }
 
-#inner a:link {
+#wrapper a:link {
   color: #C3C7C7;
 }
 
-#inner a:visited {
+#wrapper a:visited {
   color: #8FAFAF;
+}
+
+#top {
+  margin-bottom: 16px;
+}
+
+#middle {
+  margin-bottom: 48px;
 }
 
 #bottom {

@@ -25,37 +25,6 @@ abstract class AbstractHandler : KoinComponent {
       .end(message)
   }
 
-  protected fun checkAuthCookie(routingContext: RoutingContext): Boolean {
-    val authCookie = routingContext.cookieMap().getOrDefault(AUTH_COOKIE_KEY, null)
-    if (authCookie == null) {
-      val message = "No auth cookie provided"
-      logger.error(message)
-
-      sendResponse(
-        routingContext,
-        message,
-        HttpResponseStatus.FORBIDDEN
-      )
-
-      return false
-    }
-
-    if (authCookie.value != serverSettings.secretKey) {
-      val message = "Bad auth cookie"
-      logger.error(message)
-
-      sendResponse(
-        routingContext,
-        message,
-        HttpResponseStatus.FORBIDDEN
-      )
-
-      return false
-    }
-
-    return true
-  }
-
   companion object {
     const val AUTH_COOKIE_KEY = "XAuth"
   }

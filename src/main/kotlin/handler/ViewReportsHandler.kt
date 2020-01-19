@@ -19,11 +19,7 @@ class ViewReportsHandler : AbstractHandler() {
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New view reports request from ${routingContext.request().remoteAddress()}")
 
-    if (!checkAuthCookie(routingContext)) {
-      return null
-    }
-
-    val getReportsResult = reportRepository.getAllReports()
+    val getReportsResult = reportRepository.getLatestReports()
     if (getReportsResult.isFailure) {
       val message = "Couldn't get reports"
       logger.error(message, getReportsResult.exceptionOrNull()!!)
@@ -38,7 +34,9 @@ class ViewReportsHandler : AbstractHandler() {
     }
 
     val reports = getReportsResult.getOrNull()!!
-    val html = buildHtmlPage(reports)
+    val isAuthorized = isAuthorized(routingContext)
+
+    val html = buildHtmlPage(isAuthorized, reports)
 
     routingContext
       .response()
@@ -48,7 +46,7 @@ class ViewReportsHandler : AbstractHandler() {
     return Result.success(Unit)
   }
 
-  private fun buildHtmlPage(reports: List<ErrorReport>): String {
+  private fun buildHtmlPage(isAuthorized: Boolean, reports: List<ErrorReport>): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
@@ -57,14 +55,14 @@ class ViewReportsHandler : AbstractHandler() {
           +"<link rel=\"stylesheet\" href=\"https://www.w3schools.com/w3css/4/w3.css\">"
         }
 
-        body { createBody(reports) }
+        body { createBody(isAuthorized, reports) }
       }
 
       appendln()
     }
   }
 
-  private fun BODY.createBody(reports: List<ErrorReport>) {
+  private fun BODY.createBody(isAuthorized: Boolean, reports: List<ErrorReport>) {
     style {
       +viewReportsPageCss
     }
@@ -76,17 +74,29 @@ class ViewReportsHandler : AbstractHandler() {
         div {
           id = "inner"
 
+          a(href = "${serverSettings.baseUrl}/") {
+            +"[Main]"
+          }
+
+          +" "
+
+          a(href = "${serverSettings.baseUrl}/reports") {
+            +"[Reports]"
+          }
+
+          br()
+
           if (reports.isEmpty()) {
             +"No reports"
           } else {
-            renderReports(reports)
+            renderReports(isAuthorized, reports)
           }
         }
       }
     }
   }
 
-  private fun DIV.renderReports(reports: List<ErrorReport>) {
+  private fun DIV.renderReports(isAuthorized: Boolean, reports: List<ErrorReport>) {
     for ((index, report) in reports.withIndex()) {
       h2 {
         +report.title
@@ -136,7 +146,11 @@ class ViewReportsHandler : AbstractHandler() {
         +"Logs: "
       }
 
-      printLogs(report.logs)
+      div {
+        id = "logs"
+
+        printLogs(report.logs)
+      }
 
       span {
         style = "color:#A1A2A2;font-weight:bold"
@@ -146,20 +160,22 @@ class ViewReportsHandler : AbstractHandler() {
       text(ErrorReport.REPORT_DATE_TIME_PRINTER.print(report.reportedAt))
       br()
 
-      form {
-        action = "/delete_report"
+      if (isAuthorized) {
+        form {
+          action = "/delete_report"
 
-        input {
-          type = InputType.hidden
-          id = "report_hash"
-          name = "report_hash"
-          value = report.getHash()
-        }
+          input {
+            type = InputType.hidden
+            id = "report_hash"
+            name = "report_hash"
+            value = report.getHash()
+          }
 
-        input {
-          formMethod = InputFormMethod.post
-          type = InputType.submit
-          value = "Delete report"
+          input {
+            formMethod = InputFormMethod.post
+            type = InputType.submit
+            value = "Delete report"
+          }
         }
       }
 
@@ -188,5 +204,18 @@ class ViewReportsHandler : AbstractHandler() {
       text(line)
       br()
     }
+  }
+
+  private fun isAuthorized(routingContext: RoutingContext): Boolean {
+    val authCookie = routingContext.cookieMap().getOrDefault(AUTH_COOKIE_KEY, null)
+    if (authCookie == null) {
+      return false
+    }
+
+    if (authCookie.value != serverSettings.secretKey) {
+      return false
+    }
+
+    return true
   }
 }

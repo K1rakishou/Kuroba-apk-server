@@ -63,10 +63,11 @@ class ReportRepository(
     }
   }
 
-  suspend fun getAllReports(): Result<List<ErrorReport>> {
+  suspend fun getLatestReports(): Result<List<ErrorReport>> {
     return dbRead {
       ReportTable.selectAll()
         .orderBy(ReportTable.reportedAt, SortOrder.DESC)
+        .limit(25)
         .map { resultRow -> ErrorReport.fromResultRow(resultRow) }
     }
   }

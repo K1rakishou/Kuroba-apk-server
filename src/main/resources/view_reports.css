@@ -28,16 +28,21 @@ body {
 }
 #inner {
     color: #A1A2A2;
-    margin-top: 32px;
+    margin-top: 16px;
     margin-right: 16px;
     margin-bottom: 48px;
-    margin-left: 16px;
 }
 #inner a: link {
     color: #C3C7C7;
 }
 #inner a: visited {
     color: #8FAFAF;
+}
+#logs {
+  background-color: #202020;
+  width: auto;
+  height: 500px;
+  overflow: auto;
 }
 #bottom {
     display: flex;

@@ -251,21 +251,24 @@ open class ListApksHandler : AbstractHandler() {
       id = "wrapper"
 
       div {
+        id = "top"
+
+        a(href = "${serverSettings.baseUrl}/reports") {
+          +"[Reports]"
+        }
+      }
+      div {
         id = "middle"
 
+        showApks(apkInfoList, currentPage, totalPages)
+      }
+      div {
+        id = "bottom"
+
         div {
-          id = "inner"
+          id = "pages"
 
-          showApks(apkInfoList, currentPage, totalPages)
-        }
-        div {
-          id = "bottom"
-
-          div {
-            id = "pages"
-
-            showPages(apksCount, currentPage)
-          }
+          showPages(apksCount, currentPage)
         }
       }
     }
