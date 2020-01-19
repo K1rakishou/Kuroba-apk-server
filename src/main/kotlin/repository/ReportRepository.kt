@@ -29,6 +29,7 @@ class ReportRepository(
             this[ReportTable.uuid] = hash
             this[ReportTable.buildFlavor] = report.buildFlavor
             this[ReportTable.versionName] = report.versionName
+            this[ReportTable.osInfo] = report.osInfo
             this[ReportTable.title] = report.title
             this[ReportTable.description] = report.description
             this[ReportTable.logs] = report.logs
@@ -53,6 +54,7 @@ class ReportRepository(
         it[uuid] = hash
         it[buildFlavor] = report.buildFlavor
         it[versionName] = report.versionName
+        it[osInfo] = report.osInfo
         it[title] = report.title
         it[description] = report.description
         it[logs] = report.logs

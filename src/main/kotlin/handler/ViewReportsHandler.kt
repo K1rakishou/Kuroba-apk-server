@@ -118,6 +118,14 @@ class ViewReportsHandler : AbstractHandler() {
 
       span {
         style = "color:#A1A2A2;font-weight:bold"
+        +"OS info: "
+      }
+
+      text(report.osInfo)
+      br()
+
+      span {
+        style = "color:#A1A2A2;font-weight:bold"
         +"Report description: "
       }
 

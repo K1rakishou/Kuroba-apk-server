@@ -13,6 +13,7 @@ import org.joda.time.format.ISODateTimeFormat
 data class ErrorReport(
   val buildFlavor: String,
   val versionName: String,
+  val osInfo: String,
   val title: String,
   val description: String,
   val logs: String?,
@@ -41,6 +42,7 @@ data class ErrorReport(
   companion object {
     const val MAX_BUILD_FLAVOR_LENGTH = 32
     const val MAX_VERSION_NAME_LENGTH = 128
+    const val MAX_OS_INFO_LENGTH = 128
     const val MAX_TITLE_LENGTH = 512
     const val MAX_DESCRIPTION_LENGTH = 8192
     const val MAX_LOGS_LENGTH = 65535
@@ -57,6 +59,7 @@ data class ErrorReport(
       return ErrorReport(
         errorReportJsonData.buildFlavor.trimEndIfLongerThan(MAX_BUILD_FLAVOR_LENGTH),
         errorReportJsonData.versionName.trimEndIfLongerThan(MAX_VERSION_NAME_LENGTH),
+        errorReportJsonData.osInfo.trimEndIfLongerThan(MAX_OS_INFO_LENGTH),
         errorReportJsonData.title.trimEndIfLongerThan(MAX_TITLE_LENGTH),
         errorReportJsonData.description.trimEndIfLongerThan(MAX_DESCRIPTION_LENGTH),
         errorReportJsonData.logs?.trimEndIfLongerThan(MAX_LOGS_LENGTH),
@@ -68,6 +71,7 @@ data class ErrorReport(
       return ErrorReport(
         resultRow[ReportTable.buildFlavor],
         resultRow[ReportTable.versionName],
+        resultRow[ReportTable.osInfo],
         resultRow[ReportTable.title],
         resultRow[ReportTable.description],
         resultRow[ReportTable.logs],
@@ -79,6 +83,7 @@ data class ErrorReport(
       return ErrorReport(
         serializedErrorReport.buildFlavor,
         serializedErrorReport.versionName,
+        serializedErrorReport.osInfo,
         serializedErrorReport.title,
         serializedErrorReport.description,
         serializedErrorReport.logs,

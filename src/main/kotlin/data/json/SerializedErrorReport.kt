@@ -11,6 +11,8 @@ data class SerializedErrorReport(
   val buildFlavor: String,
   @Json(name = "version_name")
   val versionName: String,
+  @Json(name = "os_info")
+  val osInfo: String,
   @Json(name = "report_title")
   val title: String,
   @Json(name = "report_description")
@@ -25,6 +27,7 @@ data class SerializedErrorReport(
       return SerializedErrorReport(
         errorReport.buildFlavor,
         errorReport.versionName,
+        errorReport.osInfo,
         errorReport.title,
         errorReport.description,
         errorReport.logs,

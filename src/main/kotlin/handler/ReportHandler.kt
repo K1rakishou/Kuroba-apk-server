@@ -54,12 +54,14 @@ class ReportHandler : AbstractHandler() {
     if (
       report.buildFlavor.isEmpty()
       || report.versionName.isEmpty()
+      || report.osInfo.isEmpty()
       || report.title.isEmpty()
       || report.description.isEmpty()
     ) {
       val message = "One of the required parameters is empty! " +
         "(buildFlavor = ${report.buildFlavor.isEmpty() }), " +
         "versionName = ${report.versionName.isEmpty()}, " +
+        "osInfo = ${report.osInfo.isEmpty()}, " +
         "title = ${report.title.isEmpty()}, " +
         "description = ${report.description.isEmpty()}"
 

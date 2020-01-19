@@ -7,6 +7,7 @@ object ReportTable : Table("report_table") {
   val uuid = varchar(Field.UUID, 128).primaryKey()
   val buildFlavor = varchar(Field.BUILD_FLAVOR, ErrorReport.MAX_BUILD_FLAVOR_LENGTH)
   val versionName = varchar(Field.VERSION_NAME, ErrorReport.MAX_VERSION_NAME_LENGTH)
+  val osInfo = varchar(Field.OS_INFO, ErrorReport.MAX_OS_INFO_LENGTH)
   val title = varchar(Field.TITLE, ErrorReport.MAX_TITLE_LENGTH)
   val description = varchar(Field.DESCRIPTION, ErrorReport.MAX_DESCRIPTION_LENGTH)
   val logs = varchar(Field.LOGS, ErrorReport.MAX_LOGS_LENGTH).nullable()
@@ -16,6 +17,7 @@ object ReportTable : Table("report_table") {
     const val UUID = "report_uuid"
     const val BUILD_FLAVOR = "report_build_flavor"
     const val VERSION_NAME = "report_version_name"
+    const val OS_INFO = "os_info"
     const val TITLE = "report_title"
     const val DESCRIPTION = "report_description"
     const val LOGS = "report_logs"
