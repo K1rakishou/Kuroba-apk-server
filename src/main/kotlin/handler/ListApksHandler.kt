@@ -11,6 +11,7 @@ import org.joda.time.format.ISODateTimeFormat
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.ApkRepository
+import repository.ReportRepository
 import service.ServerStateSaverService
 import java.text.DecimalFormat
 import kotlin.math.max
@@ -18,6 +19,7 @@ import kotlin.math.max
 open class ListApksHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ListApksHandler::class.java)
   private val apksRepository by inject<ApkRepository>()
+  private val reportRepository by inject<ReportRepository>()
   private val serverStateSaverService by inject<ServerStateSaverService>()
   private val indexPageCss by lazy { getResourceString(ListApksHandler::class.java, "index.css") }
 
@@ -101,10 +103,13 @@ open class ListApksHandler : AbstractHandler() {
       apkDownloadTimesResult.getOrNull()!!
     }
 
+    val reportsCount = reportRepository.countReports().getOrNull() ?: -1
+
     val html = buildIndexHtmlPage(
       buildApkInfoList(apkNames, apkDownloadTimes),
       currentPage,
       apksCount,
+      reportsCount,
       totalPages
     )
 
@@ -225,12 +230,13 @@ open class ListApksHandler : AbstractHandler() {
     apkInfoList: List<FullApkInfo>,
     currentPage: Int,
     apksCount: Int,
+    reportsCount: Int,
     totalPages: Int
   ): String {
     return buildString {
       appendln("<!DOCTYPE html>")
       appendHTML().html {
-        body { createBody(apkInfoList, currentPage, apksCount, totalPages) }
+        body { createBody(apkInfoList, currentPage, apksCount, reportsCount, totalPages) }
       }
 
       appendln()
@@ -241,6 +247,7 @@ open class ListApksHandler : AbstractHandler() {
     apkInfoList: List<FullApkInfo>,
     currentPage: Int,
     apksCount: Int,
+    reportsCount: Int,
     totalPages: Int
   ) {
     style {
@@ -254,7 +261,7 @@ open class ListApksHandler : AbstractHandler() {
         id = "top"
 
         a(href = "${serverSettings.baseUrl}/reports") {
-          +"[Reports]"
+          +"[Reports ($reportsCount)]"
         }
       }
       div {

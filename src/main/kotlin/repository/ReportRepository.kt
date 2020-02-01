@@ -72,6 +72,13 @@ class ReportRepository(
     }
   }
 
+  suspend fun countReports(): Result<Int> {
+    return dbRead {
+      ReportTable.selectAll()
+        .count()
+    }
+  }
+
   suspend fun deleteReport(hash: String): Result<Int> {
     return dbWrite {
       ReportTable.deleteWhere {
