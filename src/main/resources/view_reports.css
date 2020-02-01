@@ -38,11 +38,16 @@ body {
 #inner a: visited {
     color: #8FAFAF;
 }
-#logs {
-  background-color: #202020;
-  width: auto;
-  height: 500px;
-  overflow: auto;
+pre {
+    background: #202020;
+    font-family: monospace;
+    font-size: 15px;
+    max-width: 100%;
+    max-height: 500px;
+    overflow: auto;
+    padding: 1em 1.5em;
+    display: block;
+    word-wrap: break-word;
 }
 #bottom {
     display: flex;

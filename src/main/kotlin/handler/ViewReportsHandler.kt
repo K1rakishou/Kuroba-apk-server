@@ -146,10 +146,10 @@ class ViewReportsHandler : AbstractHandler() {
         +"Logs: "
       }
 
-      div {
-        id = "logs"
-
-        printLogs(report.logs)
+      pre {
+        code {
+          printLogs(report.logs)
+        }
       }
 
       span {
@@ -193,7 +193,7 @@ class ViewReportsHandler : AbstractHandler() {
     }
   }
 
-  private fun DIV.printLogs(logs: String?) {
+  private fun CODE.printLogs(logs: String?) {
     if (logs == null) {
       text("No logs attached")
       br()
@@ -202,7 +202,6 @@ class ViewReportsHandler : AbstractHandler() {
 
     for (line in logs.split("\n")) {
       text(line)
-      br()
     }
   }
 
