@@ -4,7 +4,6 @@ import dispatchers.DispatcherProvider
 import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
@@ -95,7 +94,11 @@ class ServerVerticle(
         handle(false, routingContent) { viewReportsHandler.handle(routingContent) }
       }
       get("/").handler { routingContext ->
-        routingContext.reroute(HttpMethod.GET, "/apks/0")
+        routingContext
+          .response()
+          .setStatusCode(HttpResponseStatus.SEE_OTHER.code())
+          .putHeader("Location", "/apks/0")
+          .end()
       }
       get("/apks/:${ListApksHandler.PAGE_PARAM}").handler { routingContext ->
         handle(false, routingContext) { listApksHandler.handle(routingContext) }

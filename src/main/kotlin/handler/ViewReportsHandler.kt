@@ -9,6 +9,7 @@ import kotlinx.html.stream.appendHTML
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.ReportRepository
+import repository.ReportRepository.Companion.MAX_LAST_REPORTS
 
 class ViewReportsHandler : AbstractHandler() {
   private val logger = LoggerFactory.getLogger(ViewReportsHandler::class.java)
@@ -90,6 +91,12 @@ class ViewReportsHandler : AbstractHandler() {
             +"No reports"
           } else {
             renderReports(isAuthorized, reports)
+
+            if (reports.size == MAX_LAST_REPORTS) {
+              br()
+              +"Too many reports, only loaded the last $MAX_LAST_REPORTS. Delete some of them to see more."
+              br()
+            }
           }
         }
       }
@@ -202,6 +209,7 @@ class ViewReportsHandler : AbstractHandler() {
 
     for (line in logs.split("\n")) {
       text(line)
+      br()
     }
   }
 

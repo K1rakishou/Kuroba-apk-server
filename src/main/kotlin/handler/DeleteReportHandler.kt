@@ -1,7 +1,6 @@
 package handler
 
 import io.netty.handler.codec.http.HttpResponseStatus
-import io.vertx.core.http.HttpMethod
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
@@ -85,7 +84,10 @@ class DeleteReportHandler : AbstractHandler() {
     }
 
     routingContext
-      .reroute(HttpMethod.GET,"/reports")
+      .response()
+      .setStatusCode(HttpResponseStatus.SEE_OTHER.code())
+      .putHeader("Location", "/reports")
+      .end()
 
     return Result.success(Unit)
   }

@@ -67,7 +67,7 @@ class ReportRepository(
     return dbRead {
       ReportTable.selectAll()
         .orderBy(ReportTable.reportedAt, SortOrder.DESC)
-        .limit(25)
+        .limit(MAX_LAST_REPORTS)
         .map { resultRow -> ErrorReport.fromResultRow(resultRow) }
     }
   }
@@ -103,5 +103,6 @@ class ReportRepository(
 
   companion object {
     private const val CHUNK_SIZE = 500
+    const val MAX_LAST_REPORTS = 25
   }
 }
