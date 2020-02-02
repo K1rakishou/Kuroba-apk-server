@@ -75,7 +75,7 @@ class ServerVerticle(
       }
       post("/report").handler(createReportBodyHandler())
       post("/report").handler { routingContext ->
-        handle(false, routingContext) { reportHandler.handle(routingContext) }
+        handle(true, routingContext) { reportHandler.handle(routingContext) }
       }
       post("/delete_report").handler(createDeleteReportBodyHandler())
       post("/delete_report").handler { routingContent ->
