@@ -14,8 +14,8 @@ import java.io.File
 
 
 fun main(args: Array<String>) {
-  if (args.size != 4) {
-    println("Not enough arguments! (base url, secret key, apks dir and reports dir must be provided!)")
+  if (args.size != 5) {
+    println("Not enough arguments! (base url, secret key, apks dir, reports dir and ssl cert dir must be provided!)")
     return
   }
 
@@ -26,8 +26,12 @@ fun main(args: Array<String>) {
   val secretKey = args[1]
   val apksDirPath = args[2]
   val reportsDirPath = args[3]
+  val sslCertDirPath = args[4]
 
-  println("baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath, reportsDirPath = ${reportsDirPath}")
+  println(
+    "baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath, " +
+      "reportsDirPath = ${reportsDirPath}, sslCertDirPath = ${sslCertDirPath}"
+  )
   val database = initDatabase()
   val dispatcherProvider = RealDispatcherProvider()
 
@@ -40,19 +44,21 @@ fun main(args: Array<String>) {
         File(apksDirPath),
         File(reportsDirPath),
         secretKey,
+        sslCertDirPath,
         dispatcherProvider
       ).createMainModule()
     )
   }
 
-  vertx.deployVerticle(ServerVerticle(dispatcherProvider)) { ar ->
-    if (ar.succeeded()) {
-      println("Server started")
-    } else {
-      println("Could not start server")
-      ar.cause().printStackTrace()
+  vertx
+    .deployVerticle(ServerVerticle(dispatcherProvider)) { ar ->
+      if (ar.succeeded()) {
+        println("Server started")
+      } else {
+        println("Could not start server")
+        ar.cause().printStackTrace()
+      }
     }
-  }
 }
 
 private fun initDatabase(): Database {

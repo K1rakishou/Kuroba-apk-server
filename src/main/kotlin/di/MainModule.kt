@@ -33,6 +33,7 @@ class MainModule(
   private val apksDir: File,
   private val reportsDir: File,
   private val secretKey: String,
+  private val sslCertDirPath: String,
   private val dispatcherProvider: DispatcherProvider
 
 ) {
@@ -59,7 +60,8 @@ class MainModule(
           baseUrl = baseUrl,
           apksDir = apksDir,
           reportsDir = reportsDir,
-          secretKey = secretKey
+          secretKey = secretKey,
+          sslCertDirPath = sslCertDirPath
         )
       }
 

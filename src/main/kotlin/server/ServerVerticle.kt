@@ -4,6 +4,8 @@ import dispatchers.DispatcherProvider
 import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
+import io.vertx.core.http.HttpServerOptions
+import io.vertx.core.net.PemKeyCertOptions
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
@@ -14,7 +16,9 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import service.RequestThrottler
+import java.io.File
 import java.net.SocketException
+
 
 class ServerVerticle(
   private val dispatcherProvider: DispatcherProvider
@@ -48,8 +52,10 @@ class ServerVerticle(
       throw FatalHandlerException("Initialization error")
     }
 
+    val httpOpts = createHttpServerOptions()
+
     vertx
-      .createHttpServer()
+      .createHttpServer(httpOpts)
       .requestHandler(initRouter())
       .exceptionHandler { error -> logInternalNettyException(error) }
       .listen(8080)
@@ -189,7 +195,38 @@ class ServerVerticle(
     return false
   }
 
+  private fun createHttpServerOptions(): HttpServerOptions {
+    val sslCertDir = File(serverSettings.sslCertDirPath)
+
+    if (!sslCertDir.exists()) {
+      throw FatalHandlerException("sslCertDir (${sslCertDir.absoluteFile}) does not exist!")
+    }
+
+    val certFile = File(sslCertDir, CERTIFICATE_FILE_NAME)
+    if (!certFile.exists()) {
+      throw FatalHandlerException("$CERTIFICATE_FILE_NAME does not exist in ${sslCertDir.absoluteFile}")
+    }
+
+    val keyFile = File(sslCertDir, KEY_FILE_NAME)
+    if (!keyFile.exists()) {
+      throw FatalHandlerException("$KEY_FILE_NAME does not exist in ${sslCertDir.absoluteFile}")
+    }
+
+    return HttpServerOptions().apply {
+      setPemKeyCertOptions(
+        PemKeyCertOptions()
+          .setCertPath(certFile.absolutePath)
+          .setKeyPath(keyFile.absolutePath)
+      ).apply {
+        isSsl = true
+      }
+    }
+  }
+
   companion object {
+    private const val CERTIFICATE_FILE_NAME = "cert.crt"
+    private const val KEY_FILE_NAME = "key.pem"
+
     const val SECRET_KEY_HEADER_NAME = "SECRET_KEY"
     const val APK_VERSION_HEADER_NAME = "APK_VERSION"
     const val MAX_APK_FILE_SIZE = 1024L * 1024L * 32L // 32 MB

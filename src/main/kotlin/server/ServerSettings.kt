@@ -8,6 +8,7 @@ open class ServerSettings(
   open val apksDir: File,
   open val reportsDir: File,
   open val secretKey: String,
+  open val sslCertDirPath: String,
   open val apkName: String = "kuroba-dev",
   // ~10MB per apk * 1000 ~= 10GB
   open val maxApkFiles: Int = 1000,
