@@ -20,7 +20,7 @@ class HttpServerVerticle : CoroutineVerticle(), KoinComponent {
       .createHttpServer(HttpServerOptions().setSsl(false))
       .requestHandler { req ->
         req.response()
-          .setStatusCode(HttpResponseStatus.MOVED_PERMANENTLY.code())
+          .setStatusCode(HttpResponseStatus.PERMANENT_REDIRECT.code())
           .putHeader("Location", serverSettings.baseUrl + req.path())
           .end()
       }
