@@ -20,10 +20,10 @@ import java.io.File
 import java.net.SocketException
 
 
-class ServerVerticle(
+class HttpsServerVerticle(
   private val dispatcherProvider: DispatcherProvider
 ) : CoroutineVerticle(), KoinComponent {
-  private val logger = LoggerFactory.getLogger(ServerVerticle::class.java)
+  private val logger = LoggerFactory.getLogger(HttpsServerVerticle::class.java)
 
   private val serverSettings by inject<ServerSettings>()
   private val mainInitializer by inject<MainInitializer>()
@@ -52,23 +52,21 @@ class ServerVerticle(
       throw FatalHandlerException("Initialization error")
     }
 
-    val httpOpts = createHttpServerOptions()
-
     vertx
-      .createHttpServer(httpOpts)
+      .createHttpServer(createHttpServerOptions())
       .requestHandler(initRouter())
       .exceptionHandler { error -> logInternalNettyException(error) }
-      .listen(80)
+      .listen(443)
   }
 
   private fun logInternalNettyException(error: Throwable) {
     if (error is SocketException && error.message?.contains("Connection reset") == true) {
       // Do not spam the logs with "Connection reset" exceptions
-      logger.error("Connection reset by remote peer")
+      logger.error("[https] Connection reset by remote peer")
       return
     }
 
-    logger.info("Unhandled exception, error message = ${error}")
+    logger.info("[https] Unhandled exception, error message = ${error}")
   }
 
   private fun initRouter(): Router {

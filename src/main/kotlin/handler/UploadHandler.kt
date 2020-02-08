@@ -15,9 +15,9 @@ import persister.CommitPersister
 import repository.ApkRepository
 import repository.CommitRepository
 import repository.NoNewCommitsLeftAfterFiltering
-import server.ServerVerticle
-import server.ServerVerticle.Companion.APK_VERSION_HEADER_NAME
-import server.ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import server.HttpsServerVerticle
+import server.HttpsServerVerticle.Companion.APK_VERSION_HEADER_NAME
+import server.HttpsServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import service.DeleteApkFullyService
 import service.FileHeaderChecker
 import service.OldApkRemoverService
@@ -244,9 +244,9 @@ open class UploadHandler : AbstractHandler() {
     apkVersion: Long,
     latestCommitsFile: FileUpload
   ): Result<List<Commit>> {
-    if (latestCommitsFile.size() > ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE) {
+    if (latestCommitsFile.size() > HttpsServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE) {
       val message = "Commits file is too big, size = ${latestCommitsFile.size()} " +
-        "max = ${ServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE}"
+        "max = ${HttpsServerVerticle.MAX_LATEST_COMMITS_FILE_SIZE}"
       logger.error(message)
 
       return Result.failure(CommitsFileIsTooBig(message))

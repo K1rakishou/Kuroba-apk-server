@@ -9,7 +9,8 @@ import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
 import org.slf4j.impl.SimpleLogger
-import server.ServerVerticle
+import server.HttpServerVerticle
+import server.HttpsServerVerticle
 import java.io.File
 
 
@@ -51,11 +52,21 @@ fun main(args: Array<String>) {
   }
 
   vertx
-    .deployVerticle(ServerVerticle(dispatcherProvider)) { ar ->
+    .deployVerticle(HttpServerVerticle()) { ar ->
       if (ar.succeeded()) {
-        println("Server started")
+        println("HttpServerVerticle started")
       } else {
-        println("Could not start server")
+        println("Could not start HttpServerVerticle")
+        ar.cause().printStackTrace()
+      }
+    }
+
+  vertx
+    .deployVerticle(HttpsServerVerticle(dispatcherProvider)) { ar ->
+      if (ar.succeeded()) {
+        println("HttpsServerVerticle started")
+      } else {
+        println("Could not start HttpsServerVerticle")
         ar.cause().printStackTrace()
       }
     }

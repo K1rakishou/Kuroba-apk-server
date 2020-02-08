@@ -38,9 +38,9 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito
-import server.ServerVerticle
-import server.ServerVerticle.Companion.APK_VERSION_HEADER_NAME
-import server.ServerVerticle.Companion.SECRET_KEY_HEADER_NAME
+import server.HttpsServerVerticle
+import server.HttpsServerVerticle.Companion.APK_VERSION_HEADER_NAME
+import server.HttpsServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
@@ -133,7 +133,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
 
     cleanupFiles()
 
-    vertx.deployVerticle(ServerVerticle(dispatcherProvider), testContext.succeeding { id ->
+    vertx.deployVerticle(HttpsServerVerticle(dispatcherProvider), testContext.succeeding { id ->
       val client = WebClient.create(vertx)
 
       client
@@ -563,7 +563,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
       val countDownLatch = CountDownLatch(data.size)
       val executor = Executors.newFixedThreadPool(data.size)
 
-      vertx.deployVerticle(ServerVerticle(dispatcherProvider))
+      vertx.deployVerticle(HttpsServerVerticle(dispatcherProvider))
       val client = WebClient.create(vertx)
 
       val futures = data.mapIndexed { index, (mf, mm) ->
@@ -691,7 +691,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
 
       val executor = Executors.newFixedThreadPool(1)
 
-      vertx.deployVerticle(ServerVerticle(dispatcherProvider))
+      vertx.deployVerticle(HttpsServerVerticle(dispatcherProvider))
       val client = WebClient.create(vertx)
 
       data.mapIndexed { index, (mf, mm) ->
