@@ -58,7 +58,7 @@ class ServerVerticle(
       .createHttpServer(httpOpts)
       .requestHandler(initRouter())
       .exceptionHandler { error -> logInternalNettyException(error) }
-      .listen(8080)
+      .listen(80)
   }
 
   private fun logInternalNettyException(error: Throwable) {
