@@ -1,5 +1,6 @@
 package server
 
+import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.koin.core.KoinComponent
@@ -19,7 +20,7 @@ class HttpServerVerticle : CoroutineVerticle(), KoinComponent {
       .createHttpServer(HttpServerOptions().setSsl(false))
       .requestHandler { req ->
         req.response()
-          .setStatusCode(301)
+          .setStatusCode(HttpResponseStatus.MOVED_PERMANENTLY.code())
           .putHeader("Location", serverSettings.baseUrl + req.path())
           .end()
       }
