@@ -42,7 +42,7 @@ class HttpServerVerticle : CoroutineVerticle() {
 
     val host = hostSplit[0]
 
-    return "https://" + host + ":443" + req.path()
+    return "https://" + host + ":8443" + req.path()
   }
 
   private fun logInternalNettyException(error: Throwable) {
