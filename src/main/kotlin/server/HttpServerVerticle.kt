@@ -1,14 +1,16 @@
 package server
 
-import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.http.HttpServerOptions
-import io.vertx.core.http.HttpServerRequest
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import org.koin.core.KoinComponent
+import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import java.net.SocketException
 
-class HttpServerVerticle : CoroutineVerticle() {
+class HttpServerVerticle : CoroutineVerticle(), KoinComponent {
   private val logger = LoggerFactory.getLogger(HttpServerVerticle::class.java)
+
+  private val serverSettings by inject<ServerSettings>()
 
   override suspend fun start() {
     super.start()
@@ -16,33 +18,13 @@ class HttpServerVerticle : CoroutineVerticle() {
     vertx
       .createHttpServer(HttpServerOptions().setSsl(false))
       .requestHandler { req ->
-        val redirectUrl = redirectUrl(req)
-        if (redirectUrl == null) {
-          req.response()
-            .setStatusCode(HttpResponseStatus.BAD_REQUEST.code())
-            .end("Bad request")
-          return@requestHandler
-        }
-
         req.response()
           .setStatusCode(301)
-          .putHeader("Location", redirectUrl)
+          .putHeader("Location", serverSettings.baseUrl + req.path())
           .end()
       }
       .exceptionHandler { error -> logInternalNettyException(error) }
       .listen(8080)
-  }
-
-  private fun redirectUrl(req: HttpServerRequest): String? {
-    val hostSplit = req.host().split(":")
-    if (hostSplit.size != 2) {
-      logger.error("Couldn't split req.host: ${req.host()}")
-      return null
-    }
-
-    val host = hostSplit[0]
-
-    return "https://" + host + ":8443" + req.path()
   }
 
   private fun logInternalNettyException(error: Throwable) {
