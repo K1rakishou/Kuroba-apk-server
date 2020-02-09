@@ -3,18 +3,21 @@ import db.CommitTable
 import db.ReportTable
 import di.MainModule
 import dispatchers.RealDispatcherProvider
+import init.MainInitializer
 import io.vertx.core.Vertx
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
 import org.slf4j.impl.SimpleLogger
+import server.FatalHandlerException
 import server.HttpServerVerticle
 import server.HttpsServerVerticle
+import server.ServerSettings
 import java.io.File
 
 
-fun main(args: Array<String>) {
+suspend fun main(args: Array<String>) {
   if (args.size != 5) {
     println("Not enough arguments! (base url, secret key, apks dir, reports dir and ssl cert dir must be provided!)")
     return
@@ -36,7 +39,7 @@ fun main(args: Array<String>) {
   val database = initDatabase()
   val dispatcherProvider = RealDispatcherProvider()
 
-  startKoin {
+  val koinApplication = startKoin {
     modules(
       MainModule(
         vertx,
@@ -51,8 +54,19 @@ fun main(args: Array<String>) {
     )
   }
 
+  val serverSettings = koinApplication.koin.get<ServerSettings>()
+  val mainInitializer = koinApplication.koin.get<MainInitializer>()
+
+  if (!serverSettings.apksDir.exists()) {
+    throw FatalHandlerException("apksDir does not exist! dir = ${serverSettings.apksDir.absolutePath}")
+  }
+
+  if (!mainInitializer.initEverything()) {
+    throw FatalHandlerException("Initialization error")
+  }
+
   vertx
-    .deployVerticle(HttpServerVerticle()) { ar ->
+    .deployVerticle(HttpServerVerticle(dispatcherProvider)) { ar ->
       if (ar.succeeded()) {
         println("HttpServerVerticle started")
       } else {

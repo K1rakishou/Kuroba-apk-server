@@ -10,7 +10,7 @@ import org.koin.core.KoinComponent
 import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import repository.CommitRepository
-import server.HttpsServerVerticle
+import server.BaseServerVerticle.Companion.MAX_APK_FILE_SIZE
 import server.ServerSettings
 import java.nio.file.Paths
 
@@ -50,7 +50,7 @@ open class ApkPersister : KoinComponent {
       return Result.failure(ApkFileAlreadyExists())
     }
 
-    if (apkSize > HttpsServerVerticle.MAX_APK_FILE_SIZE) {
+    if (apkSize > MAX_APK_FILE_SIZE) {
       logger.error("File size is too big, actual = ${apkFile.size()}")
       return Result.failure(ApkFileIsTooBigException(apkSize))
     }
@@ -132,10 +132,8 @@ open class ApkPersister : KoinComponent {
     return Result.success(path)
   }
 
-  class MoreThanOneFileWithTheSameUuidFound(apkUuid: String, count: Int)
-    : Exception("More than one file was found with uuid ${apkUuid}, count = ${count}")
   class ApkFileIsTooBigException(apkSize: Long)
-    : Exception("Apk file is too big, size = $apkSize max = ${HttpsServerVerticle.MAX_APK_FILE_SIZE}")
+    : Exception("Apk file is too big, size = $apkSize max = $MAX_APK_FILE_SIZE")
   class CopyFileException
     : Exception("Error while trying to copy source file into the destination file")
   class ApkFileAlreadyExists : Exception("Apk file already exists")

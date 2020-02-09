@@ -1,29 +1,19 @@
 package server
 
-import io.netty.handler.codec.http.HttpResponseStatus
+import dispatchers.DispatcherProvider
 import io.vertx.core.http.HttpServerOptions
-import io.vertx.kotlin.coroutines.CoroutineVerticle
-import org.koin.core.KoinComponent
-import org.koin.core.inject
 import org.slf4j.LoggerFactory
 import java.net.SocketException
 
-class HttpServerVerticle : CoroutineVerticle(), KoinComponent {
+class HttpServerVerticle(dispatcherProvider: DispatcherProvider) : BaseServerVerticle(dispatcherProvider) {
   private val logger = LoggerFactory.getLogger(HttpServerVerticle::class.java)
-
-  private val serverSettings by inject<ServerSettings>()
 
   override suspend fun start() {
     super.start()
 
     vertx
       .createHttpServer(HttpServerOptions().setSsl(false))
-      .requestHandler { req ->
-        req.response()
-          .setStatusCode(HttpResponseStatus.PERMANENT_REDIRECT.code())
-          .putHeader("Location", serverSettings.baseUrl + req.path())
-          .end()
-      }
+      .requestHandler(initRouter())
       .exceptionHandler { error -> logInternalNettyException(error) }
       .listen(8080)
   }
