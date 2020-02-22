@@ -95,6 +95,7 @@ class GetLatestApkHandler : AbstractHandler() {
       .response()
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
       .putHeader("Content-Length", fileBuffer.length().toString())
+      .putHeader("Content-Type", "application/vnd.android.package-archive")
       .write(fileBuffer)
       .setStatusCode(HttpResponseStatus.OK.code())
       .end()
