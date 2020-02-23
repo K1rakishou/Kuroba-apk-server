@@ -3,7 +3,6 @@ package data
 import data.json.ErrorReportJsonData
 import data.json.SerializedErrorReport
 import db.ReportTable
-import extensions.trimEndIfLongerThan
 import okio.ByteString
 import org.jetbrains.exposed.sql.ResultRow
 import org.joda.time.DateTime
@@ -57,12 +56,12 @@ data class ErrorReport(
 
     fun fromJsonData(errorReportJsonData: ErrorReportJsonData, time: DateTime): ErrorReport {
       return ErrorReport(
-        errorReportJsonData.buildFlavor.trimEndIfLongerThan(MAX_BUILD_FLAVOR_LENGTH),
-        errorReportJsonData.versionName.trimEndIfLongerThan(MAX_VERSION_NAME_LENGTH),
-        errorReportJsonData.osInfo.trimEndIfLongerThan(MAX_OS_INFO_LENGTH),
-        errorReportJsonData.title.trimEndIfLongerThan(MAX_TITLE_LENGTH),
-        errorReportJsonData.description.trimEndIfLongerThan(MAX_DESCRIPTION_LENGTH),
-        errorReportJsonData.logs?.trimEndIfLongerThan(MAX_LOGS_LENGTH),
+        errorReportJsonData.buildFlavor.takeLast(MAX_BUILD_FLAVOR_LENGTH),
+        errorReportJsonData.versionName.takeLast(MAX_VERSION_NAME_LENGTH),
+        errorReportJsonData.osInfo.takeLast(MAX_OS_INFO_LENGTH),
+        errorReportJsonData.title.takeLast(MAX_TITLE_LENGTH),
+        errorReportJsonData.description.takeLast(MAX_DESCRIPTION_LENGTH),
+        errorReportJsonData.logs?.takeLast(MAX_LOGS_LENGTH),
         time
       )
     }
