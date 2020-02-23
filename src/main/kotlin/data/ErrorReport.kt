@@ -21,13 +21,13 @@ data class ErrorReport(
 
   fun getHash(): String {
     val str = buildString {
-      append(buildFlavor)
-      append(versionName)
-      append(title)
-      append(description)
-
       if (logs != null) {
         append(logs)
+      } else {
+        append(buildFlavor)
+        append(versionName)
+        append(title)
+        append(description)
       }
     }
 
