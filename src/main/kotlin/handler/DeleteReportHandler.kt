@@ -1,5 +1,6 @@
 package handler
 
+import extensions.isAuthorized
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
 import org.koin.core.inject
@@ -14,7 +15,16 @@ class DeleteReportHandler : AbstractHandler() {
   override suspend fun handle(routingContext: RoutingContext): Result<Unit>? {
     logger.info("New delete report request from ${routingContext.request().remoteAddress()}")
 
-    if (!checkAuthCookie(routingContext)) {
+    if (!routingContext.isAuthorized(serverSettings.secretKey)) {
+      val message = "Not authorized"
+      logger.error(message)
+
+      sendResponse(
+        routingContext,
+        message,
+        HttpResponseStatus.FORBIDDEN
+      )
+
       return null
     }
 
@@ -90,37 +100,6 @@ class DeleteReportHandler : AbstractHandler() {
       .end()
 
     return Result.success(Unit)
-  }
-
-  private fun checkAuthCookie(routingContext: RoutingContext): Boolean {
-    val authCookie = routingContext.cookieMap().getOrDefault(AUTH_COOKIE_KEY, null)
-    if (authCookie == null) {
-      val message = "No auth cookie provided"
-      logger.error(message)
-
-      sendResponse(
-        routingContext,
-        message,
-        HttpResponseStatus.FORBIDDEN
-      )
-
-      return false
-    }
-
-    if (authCookie.value != serverSettings.secretKey) {
-      val message = "Bad auth cookie"
-      logger.error(message)
-
-      sendResponse(
-        routingContext,
-        message,
-        HttpResponseStatus.FORBIDDEN
-      )
-
-      return false
-    }
-
-    return true
   }
 
   companion object {

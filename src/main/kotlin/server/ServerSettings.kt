@@ -32,3 +32,7 @@ open class ThrottlerSettings(
   open val removeOldVisitorsInterval: Long = TimeUnit.MINUTES.toMillis(30),
   open val oldVisitorTime: Long = TimeUnit.HOURS.toMillis(1)
 )
+
+object ServerConstants {
+  const val AUTH_COOKIE_KEY = "XAuth"
+}

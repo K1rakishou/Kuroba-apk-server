@@ -2,6 +2,7 @@ package handler
 
 import data.ErrorReport
 import extensions.getResourceString
+import extensions.isAuthorized
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
@@ -35,7 +36,7 @@ class ViewReportsHandler : AbstractHandler() {
     }
 
     val reports = getReportsResult.getOrNull()!!
-    val isAuthorized = isAuthorized(routingContext)
+    val isAuthorized = routingContext.isAuthorized(serverSettings.secretKey)
 
     val html = buildHtmlPage(isAuthorized, reports)
 
@@ -211,18 +212,5 @@ class ViewReportsHandler : AbstractHandler() {
       text(line)
       br()
     }
-  }
-
-  private fun isAuthorized(routingContext: RoutingContext): Boolean {
-    val authCookie = routingContext.cookieMap().getOrDefault(AUTH_COOKIE_KEY, null)
-    if (authCookie == null) {
-      return false
-    }
-
-    if (authCookie.value != serverSettings.secretKey) {
-      return false
-    }
-
-    return true
   }
 }

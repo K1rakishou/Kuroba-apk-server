@@ -1,6 +1,7 @@
 package server
 
 import dispatchers.DispatcherProvider
+import extensions.isAuthorized
 import handler.*
 import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
@@ -145,6 +146,10 @@ abstract class BaseServerVerticle(
     routingContext: RoutingContext,
     isSlowRequest: Boolean
   ): Boolean {
+    if (routingContext.isAuthorized(serverSettings.secretKey)) {
+      return false
+    }
+
     val remoteVisitorAddress = checkNotNull(routingContext.request().remoteAddress().host()) {
       "Remote address is null"
     }

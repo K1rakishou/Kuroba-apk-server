@@ -1,6 +1,8 @@
 package extensions
 
+import io.vertx.ext.web.RoutingContext
 import org.jetbrains.exposed.sql.*
+import server.ServerConstants
 import java.lang.Byte.toUnsignedInt
 import java.nio.charset.Charset
 
@@ -38,4 +40,17 @@ fun getResourceString(clazz: Class<*>, fileName: String): String {
   return resourceInputStream.use { inStream ->
     String(inStream.readAllBytes(), Charset.defaultCharset())
   }
+}
+
+fun RoutingContext.isAuthorized(secretKey: String): Boolean {
+  val authCookie = this.cookieMap().getOrDefault(ServerConstants.AUTH_COOKIE_KEY, null)
+  if (authCookie == null) {
+    return false
+  }
+
+  if (authCookie.value != secretKey) {
+    return false
+  }
+
+  return true
 }

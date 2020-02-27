@@ -24,8 +24,4 @@ abstract class AbstractHandler : KoinComponent {
       .setStatusCode(status.code())
       .end(message)
   }
-
-  companion object {
-    const val AUTH_COOKIE_KEY = "XAuth"
-  }
 }
