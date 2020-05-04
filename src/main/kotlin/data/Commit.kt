@@ -36,18 +36,6 @@ data class Commit(
     )
   }
 
-  fun validate(): Boolean {
-    if (commitHash.isBlank() || commitHash.length > MAX_HASH_LENGTH) {
-      return false
-    }
-
-    if (description.isBlank() || description.length > MAX_DESCRIPTION_LENGTH) {
-      return false
-    }
-
-    return true
-  }
-
   override fun equals(other: Any?): Boolean {
     if (other == null) {
       return false
@@ -83,7 +71,7 @@ data class Commit(
   }
 
   companion object {
-    const val MAX_DESCRIPTION_LENGTH = 1024
+    const val MAX_DESCRIPTION_LENGTH = 2048
     const val MAX_UUID_LENGTH = 96
     const val MAX_HASH_LENGTH = 64
 

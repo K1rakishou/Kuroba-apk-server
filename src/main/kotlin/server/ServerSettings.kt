@@ -10,8 +10,8 @@ open class ServerSettings(
   open val secretKey: String,
   open val sslCertDirPath: String,
   open val apkName: String = "kuroba-dev",
-  // ~10MB per apk * 1000 ~= 10GB
-  open val maxApkFiles: Int = 1000,
+  // ~10MB per apk * 250 ~= 2500MB
+  open val maxApkFiles: Int = 250,
   open val apkDeletionInterval: Long = TimeUnit.MINUTES.toMillis(5),
   open val serverStateSavingInterval: Long = TimeUnit.HOURS.toMillis(1),
   open val listApksPerPageCount: Int = 50,

@@ -6,6 +6,7 @@ import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.isActive
+import org.joda.time.Duration
 import org.joda.time.Instant
 import org.koin.core.KoinComponent
 import org.koin.core.inject
@@ -26,15 +27,16 @@ open class OldApkRemoverService(
   private val deleteApkFullyService by inject<DeleteApkFullyService>()
   private val timeUtils by inject<TimeUtils>()
 
-  // Delete 10% of the apks
-  private val apksToDeleteCount by lazy { ((serverSettings.maxApkFiles.toFloat() / 100f) * 10f).toInt() }
+  // Delete 25% of the apks
+  private val apksToDeleteCount by lazy { ((serverSettings.maxApkFiles.toFloat() / 100f) * 25f).toInt() }
 
   override val coroutineContext: CoroutineContext
     get() = job + dispatcherProvider.APK_REMOVER()
 
   @UseExperimental(ObsoleteCoroutinesApi::class)
   private val myActor = actor<Unit>(context = coroutineContext, capacity = 1) {
-    var lastTimeCheck = Instant.now()
+    // We subtract an hour here so that we can start deleting old apks right away
+    var lastTimeCheck = Instant.now().minus(Duration.standardHours(1))
 
     for (event in channel) {
       if (!isActive) {
@@ -45,6 +47,7 @@ open class OldApkRemoverService(
       val nextRunTime = lastTimeCheck.plus(serverSettings.apkDeletionInterval)
 
       if (!timeUtils.isItTimeToDeleteOldApks(now, nextRunTime)) {
+        logger.info("isItTimeToDeleteOldApks() returned false, now: $now, nextRunTime: $nextRunTime")
         continue
       }
 
@@ -56,6 +59,7 @@ open class OldApkRemoverService(
   }
 
   open suspend fun onNewApkUploaded() {
+    logger.info("onNewApkUploaded()")
     myActor.offer(Unit)
   }
 

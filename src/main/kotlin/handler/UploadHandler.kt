@@ -266,7 +266,6 @@ open class UploadHandler : AbstractHandler() {
     return Result.success(insertResult.getOrNull()!!)
   }
 
-
   private fun getFiles(fileUploads: Set<FileUpload>): Pair<FileUpload?, FileUpload?> {
     val apkFile = fileUploads.firstOrNull { file -> file.name() == APK_FILE_NAME }
     val commitsFile = fileUploads.firstOrNull { file -> file.name() == COMMITS_FILE_NAME }
