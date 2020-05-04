@@ -32,10 +32,6 @@ open class CommitRepository(
       return Result.failure(CommitsParseException())
     }
 
-    if (!validateCommits(parsedCommits)) {
-      return Result.failure(CommitValidationException())
-    }
-
     val insertResult = insertCommits(parsedCommits)
     if (insertResult.isFailure) {
       logger.error("Couldn't insert new commits")
@@ -43,17 +39,6 @@ open class CommitRepository(
     }
 
     return Result.success(insertResult.getOrNull()!!)
-  }
-
-  private fun validateCommits(parsedCommits: List<Commit>): Boolean {
-    for (commit in parsedCommits) {
-      if (!commit.validate()) {
-        logger.error("Commit ${commit} is not a valid commit")
-        return false
-      }
-    }
-
-    return true
   }
 
   suspend fun getCommitsByApkVersion(apkFileName: ApkFileName): Result<List<Commit>> {
@@ -90,7 +75,6 @@ open class CommitRepository(
     }
 
     return dbWrite {
-      // TODO: make this chunked
       val apkVersions = commits.map { commit -> commit.apkVersion }
       val hashes = commits.map { commit -> commit.commitHash }
       val groupUuid = checkNotNull(commits.firstOrNull { commit -> commit.head }?.apkUuid) {
@@ -102,7 +86,7 @@ open class CommitRepository(
           CommitTable.hash.inList(hashes)
       }, { resultRow ->
         Commit.fromResultRow(resultRow)
-      })
+      }).filter { commit -> validateCommit(commit) }
 
       return@dbWrite CommitTable.batchInsert(filtered) { commit ->
         this[CommitTable.uuid] = commit.apkUuid
@@ -110,10 +94,29 @@ open class CommitRepository(
         this[CommitTable.hash] = commit.commitHash
         this[CommitTable.apkVersion] = commit.apkVersion
         this[CommitTable.committedAt] = commit.committedAt
-        this[CommitTable.description] = commit.description
+        this[CommitTable.description] = trimDescription(commit.description)
         this[CommitTable.head] = commit.head
       }.map { resultRow -> Commit.fromResultRow(resultRow) }
     }
+  }
+
+  private fun trimDescription(description: String): String {
+    val maxLength = Commit.MAX_DESCRIPTION_LENGTH - ELLIPSIZE.length
+
+    if (description.length < maxLength) {
+      return description
+    }
+
+    return description.take(maxLength) + ELLIPSIZE
+  }
+
+  private fun validateCommit(commit: Commit): Boolean {
+    if (commit.commitHash.isBlank() || commit.commitHash.length > Commit.MAX_HASH_LENGTH) {
+      logger.error("Commit ${commit} has incorrect commitHash")
+      return false
+    }
+
+    return true
   }
 
   open suspend fun removeCommitsByApkList(apks: List<Apk>): Result<Unit> {
@@ -191,6 +194,7 @@ open class CommitRepository(
 
   companion object {
     private const val COMMITS_CHUNK_SIZE = 512
+    private const val ELLIPSIZE = "..."
   }
 }
 
