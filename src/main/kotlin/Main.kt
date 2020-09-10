@@ -92,9 +92,7 @@ private fun initDatabase(): Database {
     val database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
 
     transaction(database) {
-      SchemaUtils.create(CommitTable)
-      SchemaUtils.create(ApkTable)
-      SchemaUtils.create(ReportTable)
+      SchemaUtils.createMissingTablesAndColumns(CommitTable, ApkTable, ReportTable)
     }
 
     println("Done")
