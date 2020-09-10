@@ -26,7 +26,8 @@ class RequestThrottlerTest {
       baseUrl = "test",
       apksDir = File("123"),
       reportsDir = File("456"),
-      secretKey = "123"
+      secretKey = "123",
+      sslCertDirPath = "F:\\projects\\java\\current\\kuroba-server\\src\\main\\resources\\dev-cert"
     )
   }
 

@@ -38,9 +38,8 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito
+import server.BaseServerVerticle
 import server.HttpsServerVerticle
-import server.HttpsServerVerticle.Companion.APK_VERSION_HEADER_NAME
-import server.HttpsServerVerticle.Companion.SECRET_KEY_HEADER_NAME
 import java.io.File
 import java.io.IOException
 import java.nio.file.Paths
@@ -74,8 +73,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
   }
 
   private val goodHeaders = headersOf(
-    Pair(APK_VERSION_HEADER_NAME, "112233"),
-    Pair(SECRET_KEY_HEADER_NAME, "test_key")
+    Pair(BaseServerVerticle.APK_VERSION_HEADER_NAME, "112233"),
+    Pair(BaseServerVerticle.SECRET_KEY_HEADER_NAME, "test_key")
   )
 
   private val goodFiles = multipartFormOf(
@@ -180,7 +179,7 @@ class UploadHandlerTest : AbstractHandlerTest() {
     uploadHandlerTestFunc(
       vertx,
       testContext,
-      headersOf(Pair(APK_VERSION_HEADER_NAME, "abc")),
+      headersOf(Pair(BaseServerVerticle.APK_VERSION_HEADER_NAME, "abc")),
       multipartFormOf(), {
         doReturn(true).`when`(mainInitializer).initEverything()
         doReturn(Unit).`when`(oldApkRemoverService).onNewApkUploaded()
@@ -196,8 +195,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
       vertx,
       testContext,
       headersOf(
-        Pair(APK_VERSION_HEADER_NAME, "112233"),
-        Pair(SECRET_KEY_HEADER_NAME, "")
+        Pair(BaseServerVerticle.APK_VERSION_HEADER_NAME, "112233"),
+        Pair(BaseServerVerticle.SECRET_KEY_HEADER_NAME, "")
       ),
       multipartFormOf(), {
         doReturn(true).`when`(mainInitializer).initEverything()
@@ -536,8 +535,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
         commitFile.writeText(commitText)
 
         val headers = headersOf(
-          Pair(APK_VERSION_HEADER_NAME, i.toString()),
-          Pair(SECRET_KEY_HEADER_NAME, "test_key")
+          Pair(BaseServerVerticle.APK_VERSION_HEADER_NAME, i.toString()),
+          Pair(BaseServerVerticle.SECRET_KEY_HEADER_NAME, "test_key")
         )
 
         val files = multipartFormOf(
@@ -665,8 +664,8 @@ class UploadHandlerTest : AbstractHandlerTest() {
         commitFile.writeText(commitText)
 
         val headers = headersOf(
-          Pair(APK_VERSION_HEADER_NAME, i.toString()),
-          Pair(SECRET_KEY_HEADER_NAME, "test_key")
+          Pair(BaseServerVerticle.APK_VERSION_HEADER_NAME, i.toString()),
+          Pair(BaseServerVerticle.SECRET_KEY_HEADER_NAME, "test_key")
         )
 
         val files = multipartFormOf(

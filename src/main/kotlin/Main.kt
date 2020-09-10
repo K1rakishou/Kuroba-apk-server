@@ -11,7 +11,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.koin.core.context.startKoin
 import org.slf4j.impl.SimpleLogger
 import server.FatalHandlerException
-import server.HttpServerVerticle
 import server.HttpsServerVerticle
 import server.ServerSettings
 import java.io.File
@@ -36,6 +35,7 @@ suspend fun main(args: Array<String>) {
     "baseUrl = $baseUrl, secretKey = $secretKey, apksDirPath = $apksDirPath, " +
       "reportsDirPath = ${reportsDirPath}, sslCertDirPath = ${sslCertDirPath}"
   )
+
   val database = initDatabase()
   val dispatcherProvider = RealDispatcherProvider()
 
@@ -66,16 +66,6 @@ suspend fun main(args: Array<String>) {
   }
 
   vertx
-    .deployVerticle(HttpServerVerticle(dispatcherProvider)) { ar ->
-      if (ar.succeeded()) {
-        println("HttpServerVerticle started")
-      } else {
-        println("Could not start HttpServerVerticle")
-        ar.cause().printStackTrace()
-      }
-    }
-
-  vertx
     .deployVerticle(HttpsServerVerticle(dispatcherProvider)) { ar ->
       if (ar.succeeded()) {
         println("HttpsServerVerticle started")
@@ -92,9 +82,7 @@ private fun initDatabase(): Database {
     val database = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1", driver = "org.h2.Driver")
 
     transaction(database) {
-      SchemaUtils.create(CommitTable)
-      SchemaUtils.create(ApkTable)
-      SchemaUtils.create(ReportTable)
+      SchemaUtils.createMissingTablesAndColumns(CommitTable, ApkTable, ReportTable)
     }
 
     println("Done")
