@@ -73,11 +73,11 @@ open class GetApkHandler : AbstractHandler() {
 
     val fileSizeResult = fileSystem.getFileSize(apkPath)
     if (fileSizeResult.isFailure) {
-      logger.error("Error while trying to get file's \"$apkPath\" size")
+      logger.error("Error while trying to get size of file \"$apkPath\"")
 
       sendResponse(
         routingContext,
-        "Couldn't read file from disk",
+        "Error while trying to get file size",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 

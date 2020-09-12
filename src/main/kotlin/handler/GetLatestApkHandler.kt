@@ -68,17 +68,17 @@ class GetLatestApkHandler : AbstractHandler() {
       return null
     }
 
-    val readFileResult = fileSystem.readFileAsync(latestApk.apkFullPath)
-    if (readFileResult.isFailure) {
-      logger.error("Error while reading file from the disk")
+    val fileSizeResult = fileSystem.getFileSize(latestApk.apkFullPath)
+    if (fileSizeResult.isFailure) {
+      logger.error("Error while trying to get size of file \"${latestApk.apkFullPath}\"")
 
       sendResponse(
         routingContext,
-        "Couldn't read file from disk",
+        "Error while trying to get file size",
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return Result.failure(readFileResult.exceptionOrNull()!!)
+      return Result.failure(fileSizeResult.exceptionOrNull()!!)
     }
 
     val increaseDownloadCountResult = apkRepository.increaseDownloadCountForApk(latestApk.apkUuid)
@@ -89,16 +89,15 @@ class GetLatestApkHandler : AbstractHandler() {
       )
     }
 
-    val fileBuffer = readFileResult.getOrNull()!!
+    val fileSize = fileSizeResult.getOrNull()!!
 
     routingContext
       .response()
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
-      .putHeader("Content-Length", fileBuffer.length().toString())
+      .putHeader("Content-Length", fileSize.toString())
       .putHeader("Content-Type", "application/vnd.android.package-archive")
-      .write(fileBuffer)
       .setStatusCode(HttpResponseStatus.OK.code())
-      .end()
+      .sendFile(latestApk.apkFullPath, 0, fileSize)
 
     return Result.success(Unit)
   }
