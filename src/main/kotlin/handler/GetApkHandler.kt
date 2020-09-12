@@ -71,9 +71,9 @@ open class GetApkHandler : AbstractHandler() {
       return Result.failure(FileDoesNotExist(serverSettings.apksDir.absolutePath, apkUuid))
     }
 
-    val readFileResult = fileSystem.readFileAsync(apkPath)
-    if (readFileResult.isFailure) {
-      logger.error("Error while reading file from the disk ")
+    val fileSizeResult = fileSystem.getFileSize(apkPath)
+    if (fileSizeResult.isFailure) {
+      logger.error("Error while trying to get file's \"$apkPath\" size")
 
       sendResponse(
         routingContext,
@@ -81,7 +81,7 @@ open class GetApkHandler : AbstractHandler() {
         HttpResponseStatus.INTERNAL_SERVER_ERROR
       )
 
-      return Result.failure(readFileResult.exceptionOrNull()!!)
+      return Result.failure(fileSizeResult.exceptionOrNull()!!)
     }
 
     val increaseDownloadCountResult = apkRepository.increaseDownloadCountForApk(apkUuid)
@@ -95,16 +95,15 @@ open class GetApkHandler : AbstractHandler() {
     serverStateSaverService.newSaveServerStateRequest(false)
 
     val apkFileName = ApkFileName.fromString(apkPath)
-    val fileBuffer = readFileResult.getOrNull()!!
+    val fileSize = fileSizeResult.getOrNull()!!
 
     routingContext
       .response()
       .putHeader("Content-Disposition", "attachment; filename=\"${serverSettings.apkName}-${apkFileName}.apk\"")
-      .putHeader("Content-Length", fileBuffer.length().toString())
+      .putHeader("Content-Length", fileSize.toString())
       .putHeader("Content-Type", "application/vnd.android.package-archive")
-      .write(fileBuffer)
       .setStatusCode(HttpResponseStatus.OK.code())
-      .end()
+      .sendFile(apkPath, 0, fileSize)
 
     return Result.success(Unit)
   }
