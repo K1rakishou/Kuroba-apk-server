@@ -44,7 +44,7 @@ data class ErrorReport(
     const val MAX_OS_INFO_LENGTH = 128
     const val MAX_TITLE_LENGTH = 512
     const val MAX_DESCRIPTION_LENGTH = 8192
-    const val MAX_LOGS_LENGTH = 65535
+    const val MAX_LOGS_LENGTH = 128 * 1024
 
     val REPORT_DATE_TIME_PRINTER = DateTimeFormatterBuilder()
       .append(ISODateTimeFormat.date())

@@ -263,7 +263,14 @@ open class ListApksHandler : AbstractHandler() {
         a(href = "${serverSettings.baseUrl}/reports") {
           +"[Reports ($reportsCount)]"
         }
+
+        +" "
+
+        a(href = "https://github.com/K1rakishou/Kuroba-Experimental") {
+          +"[GitHub]"
+        }
       }
+
       div {
         id = "middle"
 
