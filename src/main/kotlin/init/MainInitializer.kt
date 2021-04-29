@@ -2,8 +2,8 @@ package init
 
 import dispatchers.DispatcherProvider
 import kotlinx.coroutines.withContext
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import kotlin.system.measureTimeMillis
 

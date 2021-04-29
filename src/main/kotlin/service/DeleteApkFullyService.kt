@@ -1,8 +1,8 @@
 package service
 
 import data.Apk
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import persister.ApkPersister
 import persister.CommitPersister

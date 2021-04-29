@@ -9,7 +9,8 @@ data class ApkDownloadTimesState(
   @Json(name = "apk_download_times_list") val apkDownloadTimesList: List<ApkDownloadTimes>
 )
 
+@JsonClass(generateAdapter = true)
 data class ApkDownloadTimes(
-  @Json(name = "apk_uuid") val apkUuid: String,
-  @Json(name = "downloaded_times") val downloadedTimes: Int
+  @Json(name = "apkUuid") val apkUuid: String,
+  @Json(name = "downloadedTimes") val downloadedTimes: Int
 )

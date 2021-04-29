@@ -8,9 +8,8 @@ import fs.FileSystem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.onEach
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import repository.CommitRepository
@@ -38,7 +37,7 @@ open class ApkRepositoryInitializer : Initializer, KoinComponent {
 
       commitRepository.getAllCommitsStream()
         .catch { error -> throw error }
-        .onEach { commitsChunk ->
+        .collect { commitsChunk ->
           val apks = mapCommitsToApks(commitsChunk, apkDownloadTimesMap)
           val insertResult = apkRepository.insertApks(apks)
           if (insertResult.isFailure) {
@@ -48,7 +47,6 @@ open class ApkRepositoryInitializer : Initializer, KoinComponent {
           totalApksCount += apks.size
           totalCommitsCount += commitsChunk.size
         }
-        .collect()
 
       logger.info("Restored ${totalApksCount} apks and ${totalCommitsCount} commits")
     }

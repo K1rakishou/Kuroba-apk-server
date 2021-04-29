@@ -10,7 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import org.jetbrains.exposed.sql.*
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import parser.CommitParser
 

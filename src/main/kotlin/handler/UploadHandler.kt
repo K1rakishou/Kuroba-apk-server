@@ -8,7 +8,7 @@ import extensions.toHex
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.FileUpload
 import io.vertx.ext.web.RoutingContext
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import persister.ApkPersister
 import persister.CommitPersister

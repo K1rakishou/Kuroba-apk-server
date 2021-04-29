@@ -8,8 +8,8 @@ import kotlinx.coroutines.channels.actor
 import kotlinx.coroutines.isActive
 import org.joda.time.Duration
 import org.joda.time.Instant
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import server.ServerSettings

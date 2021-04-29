@@ -13,8 +13,8 @@ import io.vertx.ext.web.handler.BodyHandler
 import io.vertx.ext.web.handler.FaviconHandler
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.launch
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import service.RequestThrottler
 import java.io.File
@@ -87,7 +87,7 @@ abstract class BaseServerVerticle(
       get("/save_state").handler { routingContext ->
         handle(false, routingContext) { saveServerStateHandler.handle(routingContext) }
       }
-      route("/favicon.ico").handler(FaviconHandler.create("favicon.ico"))
+      route("/favicon.ico").handler(FaviconHandler.create(vertx, "favicon.ico"))
     }
   }
 

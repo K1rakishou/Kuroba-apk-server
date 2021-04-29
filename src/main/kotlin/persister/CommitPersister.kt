@@ -5,8 +5,8 @@ import data.Commit
 import data.CommitFileName
 import fs.FileSystem
 import io.vertx.core.buffer.Buffer
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import parser.CommitParser
 import repository.CommitRepository

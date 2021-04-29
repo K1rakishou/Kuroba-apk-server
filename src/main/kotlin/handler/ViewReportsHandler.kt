@@ -7,7 +7,7 @@ import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.ext.web.RoutingContext
 import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import repository.ReportRepository
 import repository.ReportRepository.Companion.MAX_LAST_REPORTS

@@ -3,8 +3,8 @@ package init
 import data.ApkFileName
 import data.CommitFileName
 import fs.FileSystem
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import repository.CommitRepository
 import server.FatalHandlerException

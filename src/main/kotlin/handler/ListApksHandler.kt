@@ -8,7 +8,7 @@ import kotlinx.html.*
 import kotlinx.html.stream.appendHTML
 import org.joda.time.format.DateTimeFormatterBuilder
 import org.joda.time.format.ISODateTimeFormat
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.slf4j.LoggerFactory
 import repository.ApkRepository
 import repository.ReportRepository

@@ -3,7 +3,7 @@ package data
 import data.json.ErrorReportJsonData
 import data.json.SerializedErrorReport
 import db.ReportTable
-import okio.ByteString
+import okio.ByteString.Companion.encodeUtf8
 import org.jetbrains.exposed.sql.ResultRow
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormatterBuilder
@@ -31,7 +31,7 @@ data class ErrorReport(
       }
     }
 
-    return ByteString.encodeUtf8(str).md5().hex()
+    return str.encodeUtf8().md5().hex()
   }
 
   override fun toString(): String {
