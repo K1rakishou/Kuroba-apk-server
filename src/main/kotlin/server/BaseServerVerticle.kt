@@ -169,7 +169,7 @@ abstract class BaseServerVerticle(
   }
 
   protected fun createHttpServerOptions(): HttpServerOptions {
-    val sslCertDir = File(serverSettings.sslCertDirPath)
+    val sslCertDir = serverSettings.sslCertDir
 
     if (!sslCertDir.exists()) {
       throw FatalHandlerException("sslCertDir (${sslCertDir.absoluteFile}) does not exist!")

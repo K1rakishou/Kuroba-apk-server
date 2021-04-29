@@ -1,3 +1,4 @@
+import data.BackendParams
 import db.ApkTable
 import db.CommitTable
 import db.ReportTable
@@ -13,28 +14,22 @@ import org.slf4j.impl.SimpleLogger
 import server.FatalHandlerException
 import server.HttpsServerVerticle
 import server.ServerSettings
-import java.io.File
 
 
 suspend fun main(args: Array<String>) {
-  if (args.size != 6) {
-    println("Not enough arguments! (base url, secret key, apks dir, reports dir and ssl cert dir must be provided!)")
+  if (args.size != 1) {
+    println("Not enough arguments! (backend_parameters file path)")
     return
   }
 
   System.setProperty(SimpleLogger.DEFAULT_LOG_LEVEL_KEY, "INFO")
 
   val vertx = Vertx.vertx()
-  val baseUrl = args[0]
-  val testMode = args[1].toBoolean()
-  val secretKey = args[2]
-  val apksDirPath = args[3]
-  val reportsDirPath = args[4]
-  val sslCertDirPath = args[5]
+  val backendParams = BackendParams.fromParamsFile(args[0])
 
   println(
-    "baseUrl = $baseUrl, testMode=$testMode secretKey = $secretKey, apksDirPath = $apksDirPath, " +
-      "reportsDirPath = ${reportsDirPath}, sslCertDirPath = ${sslCertDirPath}"
+    "baseUrl = ${backendParams.baseUrl}, testMode=${backendParams.testMode} secretKey=${backendParams.secretKey}, " +
+      "apksDir=${backendParams.apksDir}, reportsDir=${backendParams.reportsDir}, sslCertDir=${backendParams.sslCertDir}"
   )
 
   val database = initDatabase()
@@ -43,14 +38,10 @@ suspend fun main(args: Array<String>) {
   val koinApplication = startKoin {
     modules(
       MainModule(
-        vertx,
-        database,
-        baseUrl,
-        File(apksDirPath),
-        File(reportsDirPath),
-        secretKey,
-        sslCertDirPath,
-        dispatcherProvider
+        vertx = vertx,
+        database = database,
+        backendParams = backendParams,
+        dispatcherProvider = dispatcherProvider
       ).createMainModule()
     )
   }

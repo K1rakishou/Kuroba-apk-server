@@ -60,11 +60,11 @@ abstract class AbstractHandlerTest {
     serverSettings =
       Mockito.spy(
         ServerSettings(
-          "http://127.0.0.1:8080",
-          File("src/test/resources/test_dump"),
-          File("src/test/resources/reports_test_dump"),
-          "test_key",
-          "kuroba-dev"
+          baseUrl = "http://127.0.0.1:8080",
+          apksDir = File("src/test/resources/test_dump"),
+          reportsDir = File("src/test/resources/reports_test_dump"),
+          secretKey = "test_key",
+          sslCertDir = File("src/test/resources/dev-cert")
         )
       )
     commitParser = Mockito.spy(CommitParser())

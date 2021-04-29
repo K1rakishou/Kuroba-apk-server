@@ -1,6 +1,7 @@
 package di
 
 import com.squareup.moshi.Moshi
+import data.BackendParams
 import data.adapter.DateTimeJsonAdapter
 import dispatchers.DispatcherProvider
 import fs.FileSystem
@@ -24,18 +25,12 @@ import repository.ReportRepository
 import server.ServerSettings
 import service.*
 import util.TimeUtils
-import java.io.File
 
 class MainModule(
   private val vertx: Vertx,
   private val database: Database,
-  private val baseUrl: String,
-  private val apksDir: File,
-  private val reportsDir: File,
-  private val secretKey: String,
-  private val sslCertDirPath: String,
+  private val backendParams: BackendParams,
   private val dispatcherProvider: DispatcherProvider
-
 ) {
 
   fun createMainModule(): Module {
@@ -57,11 +52,11 @@ class MainModule(
       single { TimeUtils() }
       single {
         ServerSettings(
-          baseUrl = baseUrl,
-          apksDir = apksDir,
-          reportsDir = reportsDir,
-          secretKey = secretKey,
-          sslCertDirPath = sslCertDirPath
+          baseUrl = backendParams.baseUrl,
+          apksDir = backendParams.apksDir,
+          reportsDir = backendParams.reportsDir,
+          secretKey = backendParams.secretKey,
+          sslCertDir = backendParams.sslCertDir
         )
       }
 
