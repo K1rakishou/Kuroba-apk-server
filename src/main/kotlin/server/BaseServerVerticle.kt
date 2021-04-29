@@ -3,7 +3,6 @@ package server
 import dispatchers.DispatcherProvider
 import extensions.isAuthorized
 import handler.*
-import init.MainInitializer
 import io.netty.handler.codec.http.HttpResponseStatus
 import io.vertx.core.http.HttpServerOptions
 import io.vertx.core.net.PemKeyCertOptions
@@ -25,7 +24,6 @@ abstract class BaseServerVerticle(
   private val logger = LoggerFactory.getLogger(BaseServerVerticle::class.java)
 
   protected val serverSettings by inject<ServerSettings>()
-  protected val mainInitializer by inject<MainInitializer>()
   protected val requestThrottler by inject<RequestThrottler>()
 
   protected val uploadHandler by inject<UploadHandler>()

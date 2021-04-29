@@ -8,9 +8,7 @@ data class BackendParams(
   val secretKey: String,
   val apksDir: File,
   val reportsDir: File,
-  val sslCertDir: File,
-  val dvachAppIdPubKey: String,
-  val dvachAppIdPrivKey: String
+  val sslCertDir: File
 ) {
 
   fun validate() {
@@ -36,8 +34,6 @@ data class BackendParams(
       var apksDirPath: String? = null
       var reportsDirPath: String? = null
       var sslCertDirPath: String? = null
-      var dvachAppIdPubKey: String? = null
-      var dvachAppIdPrivKey: String? = null
 
       paramsFile.readLines().forEach { line ->
         val (paramName, paramValue) = line.split("=")
@@ -49,8 +45,6 @@ data class BackendParams(
           "apksDirPath" -> apksDirPath = paramValue
           "reportsDirPath" -> reportsDirPath = paramValue
           "sslCertDirPath" -> sslCertDirPath = paramValue
-          "dvachAppIdPubKey" -> dvachAppIdPubKey = paramValue
-          "dvachAppIdPrivKey" -> dvachAppIdPrivKey = paramValue
           else -> throw IllegalArgumentException("Unknown paramName: \'${paramName}\'")
         }
       }
@@ -62,8 +56,6 @@ data class BackendParams(
         apksDir = File(apksDirPath!!),
         reportsDir = File(reportsDirPath!!),
         sslCertDir = File(sslCertDirPath!!),
-        dvachAppIdPubKey = dvachAppIdPubKey!!,
-        dvachAppIdPrivKey = dvachAppIdPrivKey!!
       ).also { backendParams -> backendParams.validate() }
     }
   }

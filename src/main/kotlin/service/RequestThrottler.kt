@@ -209,6 +209,6 @@ open class RequestThrottler(
   }
 
   companion object {
-    private const val AMOUNT_OF_UNIQUE_VISITORS_TO_START_REMOVING = 256
+    private const val AMOUNT_OF_UNIQUE_VISITORS_TO_START_REMOVING = 2048
   }
 }
